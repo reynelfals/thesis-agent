@@ -1,7 +1,7 @@
 # Thesis demo script — 2 minutes 30 seconds
 
-**Rendered video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)  
-**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)  
+**Rendered video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)
+**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)
 **Public demo:** <https://thesis-agent.replit.app>
 
 ## Recording checklist
