@@ -2,7 +2,7 @@
 
 **Track:** Options Alpha Agents  
 **Demo:** `[ADD PUBLISHED REPLIT URL]`  
-**Public repository:** <https://github.com/reynelfals/thesis-agent>  
+**Public repository:** <https://github.com/reynelfals/thesis-agent>
 **Paper account ID:** Enter the full ID only in lablab.ai’s required private field.
 
 **Printable version:** [`submission_assets/thesis-one-page.pdf`](submission_assets/thesis-one-page.pdf)
