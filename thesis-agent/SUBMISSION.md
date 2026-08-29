@@ -1,11 +1,11 @@
 # Thesis — Propose. Prove. Execute.
 
 **Track:** Options Alpha Agents  
-**Demo:** <https://thesis-agent.replit.app>  
+**Demo:** <https://thesis-agent.replit.app>
 **Public repository:** <https://github.com/reynelfals/thesis-agent>
-**Narrated video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)  
-**Direct video URL:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>  
-**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)  
+**Narrated video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)
+**Direct video URL:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
+**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)
 **Paper account ID:** Enter the full ID only in lablab.ai’s required private field.
 
 **Printable version:** [`submission_assets/thesis-one-page.pdf`](submission_assets/thesis-one-page.pdf)
