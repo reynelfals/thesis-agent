@@ -5,3 +5,5 @@ openai>=1.40.0
 pytest>=8.0.0
 fastapi>=0.141.0
 uvicorn>=0.52.0
+mcp>=1.29.1,<2.0.0
+alpaca-mcp-server==2.3.0

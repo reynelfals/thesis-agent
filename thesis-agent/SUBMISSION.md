@@ -1,8 +1,11 @@
 # Thesis — Propose. Prove. Execute.
 
 **Track:** Options Alpha Agents  
-**Demo:** `[ADD PUBLISHED REPLIT URL]`  
+**Demo:** <https://thesis-agent.replit.app>  
 **Public repository:** <https://github.com/reynelfals/thesis-agent>
+**Narrated video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)  
+**Direct video URL:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>  
+**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)  
 **Paper account ID:** Enter the full ID only in lablab.ai’s required private field.
 
 **Printable version:** [`submission_assets/thesis-one-page.pdf`](submission_assets/thesis-one-page.pdf)
@@ -23,43 +26,57 @@ paper infrastructure proves what actually happened.
 ## How the agent works
 
 Each cycle reads live paper-account state, positions, fills, and market data from
-Alpaca. Grok-4.6 receives a compact market snapshot and returns structured JSON:
-underlying, direction, regime, setup, invalidation, horizon, expected move, an IV
-note, and conviction. Grok never chooses contracts, sizes risk, or submits orders.
+Alpaca. A deterministic scout ranks the selected universe, probes options only for
+its top five, and advances at most three option-feasible candidates. Grok-4.6 sees
+only filtered, read-only official Alpaca MCP `get_stock_snapshot` and
+`get_option_chain` tools scoped to that shortlist.
 
-If conviction is high enough, deterministic code constructs a call or put debit
-vertical. It selects a 14–45 DTE expiration near 25 DTE, an approximately at-the-money
-long leg, and a defined-width short leg. The order is a day-limit MLEG with a 1:1
-ratio. Maximum loss is known before submission: net debit × 100 × quantity.
+Grok returns its thesis through `request_defined_risk_spread`: underlying,
+direction, regime, setup, invalidation, horizon, expected move, an IV note, and
+conviction. This requests analysis, not execution. Grok never chooses final
+contracts, sizes risk, reads the account or clock, checks order status, or submits
+orders; the application harness owns those system calls.
 
-The cycle then applies hard gates: paper endpoint only; Alpaca CLI v0.0.13 present;
-CLI paper account active, unblocked, and options level 3; CLI clock valid and in
-agreement with the SDK; allowlisted underlying; conviction at least 0.35; valid
-quotes and debit; 14–45 DTE; no more than three open theses; at most 2% of equity
-at risk per thesis and 6% in aggregate; market open; and explicit execution
-enablement. Any failed gate produces a recorded no-trade or blocked decision.
+If conviction is high enough, deterministic code independently rebuilds a call or
+put debit vertical, refreshes quotes, and revalidates liquidity, 14–45 DTE,
+contract identity, sizing, and risk. It selects an expiration near 25 DTE, an
+approximately at-the-money long leg, and a defined-width short leg. The order is a
+day-limit MLEG with a 1:1 ratio. Maximum loss is known before submission: net debit
+× 100 × quantity.
+
+The cycle then applies hard gates: paper endpoint only; official Alpaca MCP ready;
+paper account active and unblocked; mandatory options level 3; MCP clock valid and
+in agreement with the SDK read; allowlisted underlying; conviction at least 0.35;
+valid liquidity, quotes, debit, and 14–45 DTE; no more than three open theses; at
+most 2% of equity at risk per thesis and 6% in aggregate; market open; and explicit
+execution enablement. Any failed gate produces a recorded no-trade or blocked
+decision.
 
 ## Alpaca implementation
 
 Alpaca’s Trading and Market Data APIs provide account state, positions, option
 contracts and quotes, stock trades and bars, order status, portfolio history, and
-fill activities. Alpaca CLI is part of the actual agent path—not a screenshot-only
-demo. Every cycle runs `alpaca account get` and `alpaca clock`. An eligible spread
-is submitted only through `alpaca api POST /v2/orders`.
+fill activities. The official Alpaca MCP server is the agent tool boundary. The
+application harness owns MCP account, clock, and order-status calls; SDK reads may
+support deterministic scouting, monitoring, and performance.
 
-The CLI boundary fails closed. Invalid CLI JSON, a blocked account, insufficient
-options level, clock disagreement, timeout, rejection, or a response without an
-order ID stops the cycle. It never retries through the SDK, avoiding both false
-tool attribution and duplicate orders after an ambiguous response.
+`place_option_order` is the only write path. There is no CLI or SDK write fallback.
+A timeout, malformed response, missing order ID, rejection, or otherwise ambiguous
+submission is terminal and never retried. Paper-only operation and options level 3
+are mandatory.
 
 ## Evidence and performance
 
 The hosted FastAPI dashboard is a read-only audit console. It renders before broker
 data arrives, then reconciles the append-only SQLite decision ledger with Alpaca
 paper data in the background. Judges can expand any cycle and inspect the Grok
-thesis, deterministic gates, sanitized CLI/API trace, exact blocked MLEG intent,
+thesis, deterministic gates, sanitized MCP/API trace, exact blocked MLEG intent,
 broker order state, fills, position attribution, exit state, realized and unrealized
 P&L, reconciliation delta, and equity curve.
+
+Historical CLI audit rows remain readable. New cycles record `tool_path=mcp` with
+empty `cli_commands`. No real MCP order fill is claimed until one is captured and
+reconciled from the submitted paper account.
 
 Performance values come from the submitted paper account and are displayed directly
 from Alpaca; they are not hardcoded or backfilled. A no-trade is treated as a valid,

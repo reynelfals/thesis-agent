@@ -170,7 +170,7 @@ def test_http_routes_static_assets_and_cycle_contract(tmp_path) -> None:
             "id": "cycle-contract",
             "at": "2026-01-01T10:00:00Z",
             "decision": "blocked",
-            "tool_path": "cli",
+            "tool_path": "mcp",
             "gates": [
                 {
                     "at": "2026-01-01T10:00:00Z",
@@ -188,7 +188,49 @@ def test_http_routes_static_assets_and_cycle_contract(tmp_path) -> None:
                     "status": "paper",
                 }
             ],
-            "thesis": {"id": "thesis-contract", "underlying": "SPY"},
+            "thesis": {
+                "id": "thesis-contract",
+                "underlying": "SPY",
+                "leaderboard": [
+                    {
+                        "symbol": "SPY",
+                        "stock_rank": 1,
+                        "stock_score": 0.8123,
+                        "avg_dollar_volume_20d": 120000000,
+                        "min_avg_dollar_volume": 50000000,
+                        "max_option_bid_ask_pct": 25,
+                        "factors": {
+                            "trend_distance": 0.8,
+                            "trend_alignment": 1.0,
+                            "trend": 0.9,
+                            "momentum_5d": 0.7,
+                            "volatility_fit": 0.6,
+                            "raw_sdk_object": {"secret": "must-drop"},
+                        },
+                        "regime": "uptrend/normal_vol",
+                        "probed": True,
+                        "call_count": 12,
+                        "put_count": 10,
+                        "feasible_sides": ["bullish"],
+                        "options_score": 0.05,
+                        "total_score": 0.8623,
+                        "status": "feasible",
+                        "reason": "token=top-secret-value",
+                        "option_liquidity": {
+                            "bullish": [
+                                {
+                                    "symbol": "SPY260918C00600000",
+                                    "bid_price": 4.8,
+                                    "ask_price": 5.0,
+                                    "bid_ask_pct": 4.0816,
+                                    "raw_quote": "must-drop",
+                                }
+                            ]
+                        },
+                        "unknown_response": {"credential": "must-drop"},
+                    }
+                ],
+            },
         }
     )
     dashboard = Dashboard(settings=Settings(), store=store, client=client)
@@ -221,6 +263,7 @@ def test_http_routes_static_assets_and_cycle_contract(tmp_path) -> None:
     payload = response.json()
     assert payload["status"] == "ready"
     cycle = next(item for item in payload["cycles"] if item["id"] == "cycle-contract")
+    assert cycle["tool_path"] == "mcp"
     assert cycle["gates"][0] == {
         "at": "2026-01-01T10:00:00Z",
         "name": "risk",
@@ -234,6 +277,23 @@ def test_http_routes_static_assets_and_cycle_contract(tmp_path) -> None:
         "status": "pass",
         "evidence": "paper",
     }
+    leaderboard = cycle["thesis"]["leaderboard"]
+    assert len(leaderboard) == 1
+    assert leaderboard[0]["symbol"] == "SPY"
+    assert leaderboard[0]["factors"]["trend_distance"] == 0.8
+    assert leaderboard[0]["factors"]["volatility_fit"] == 0.6
+    assert leaderboard[0]["avg_dollar_volume_20d"] == 120000000
+    assert leaderboard[0]["option_liquidity"]["bullish"][0] == {
+        "symbol": "SPY260918C00600000",
+        "bid_price": 4.8,
+        "ask_price": 5.0,
+        "bid_ask_pct": 4.0816,
+    }
+    assert "raw_sdk_object" not in leaderboard[0]["factors"]
+    assert "unknown_response" not in leaderboard[0]
+    assert "raw_quote" not in leaderboard[0]["option_liquidity"]["bullish"][0]
+    assert leaderboard[0]["reason"] == "token=[REDACTED]"
+    assert "top-secret-value" not in json.dumps(payload)
     assert health.status_code == 200
     assert health.json()["ok"] is True
     assert health.json()["status"] == "ready"

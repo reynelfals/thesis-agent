@@ -39,6 +39,11 @@ class Structure(BaseModel):
     debit_limit: float
     qty: int
     max_loss_usd: float
+    avg_dollar_volume_20d: float | None = None
+    min_avg_dollar_volume: float | None = None
+    max_option_bid_ask_pct: float | None = None
+    long_bid_ask_pct: float | None = None
+    short_bid_ask_pct: float | None = None
     legs: list[SpreadLeg]
 
 
@@ -124,8 +129,9 @@ class Thesis(BaseModel):
     notes: str = ""
     decision: str = ""  # no_trade | rejected | submitted | blocked
     gates: list[dict[str, Any]] = Field(default_factory=list)
-    tool_path: str = ""  # cli | alpaca-py | none
+    tool_path: str = ""  # mcp | legacy cli | none
     snapshots: list[dict[str, Any]] = Field(default_factory=list)
+    leaderboard: list[dict[str, Any]] = Field(default_factory=list)
     order_status: str = ""
     order_submitted_at: datetime | None = None
     order_filled_at: datetime | None = None

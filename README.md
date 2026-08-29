@@ -17,8 +17,13 @@ reconciliation, and the equity curve.
 - [Project documentation](thesis-agent/README.md)
 - [One-page submission write-up](thesis-agent/SUBMISSION.md)
 - [Verified one-page PDF](thesis-agent/submission_assets/thesis-one-page.pdf)
+- [Presentation deck PDF](thesis-agent/submission_assets/thesis-slides.pdf)
+- [Narrated demo video](thesis-agent/submission_assets/thesis-demo.mp4)
 - [Demo script](thesis-agent/DEMO_SCRIPT.md)
 - [Submission checklist](thesis-agent/SUBMISSION_CHECKLIST.md)
+- [MIT license](LICENSE)
+
+**Live audit console:** <https://thesis-agent.replit.app>
 
 ## Run
 

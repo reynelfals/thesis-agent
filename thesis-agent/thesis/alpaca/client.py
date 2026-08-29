@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
 from alpaca.data.enums import DataFeed
@@ -11,20 +13,24 @@ from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import (
     AssetStatus,
     ContractType,
-    OrderClass,
-    OrderSide,
-    PositionIntent,
-    TimeInForce,
 )
 from alpaca.trading.requests import (
     GetOrderByIdRequest,
     GetOptionContractsRequest,
     GetPortfolioHistoryRequest,
-    LimitOrderRequest,
-    OptionLegRequest,
 )
 
 from thesis.config import Settings
+
+
+@dataclass(frozen=True)
+class DailyStockObservation:
+    close: float
+    volume: float
+
+    @property
+    def dollar_volume(self) -> float:
+        return self.close * self.volume
 
 
 class PaperClient:
@@ -61,7 +67,9 @@ class PaperClient:
         trade = trades[symbol]
         return float(trade.price)
 
-    def daily_closes(self, symbol: str, days: int = 40) -> list[float]:
+    def daily_observations(
+        self, symbol: str, days: int = 40
+    ) -> list[DailyStockObservation]:
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=days + 15)
         bars = self.stocks.get_stock_bars(
@@ -74,8 +82,27 @@ class PaperClient:
             )
         )
         frame = bars[symbol]
-        closes = [float(b.close) for b in frame]
-        return closes[-days:]
+        observations: list[DailyStockObservation] = []
+        for bar in frame:
+            close = float(bar.close)
+            volume = float(bar.volume)
+            if (
+                not math.isfinite(close)
+                or not math.isfinite(volume)
+                or close <= 0
+                or volume < 0
+            ):
+                raise RuntimeError(f"invalid daily bar data for {symbol}")
+            observations.append(
+                DailyStockObservation(close=close, volume=volume)
+            )
+        return observations[-days:]
+
+    def daily_closes(self, symbol: str, days: int = 40) -> list[float]:
+        return [
+            observation.close
+            for observation in self.daily_observations(symbol, days=days)
+        ]
 
     def option_chain(
         self,
@@ -95,38 +122,6 @@ class PaperClient:
             limit=1000,
         )
         return self.trading.get_option_contracts(req)
-
-    def place_debit_vertical(
-        self,
-        *,
-        long_symbol: str,
-        short_symbol: str,
-        qty: int,
-        limit_price: float,
-    ):
-        """Defined-risk debit spread as one multi-leg order. Paper only."""
-        self.settings.assert_paper()
-        req = LimitOrderRequest(
-            qty=qty,
-            time_in_force=TimeInForce.DAY,
-            order_class=OrderClass.MLEG,
-            limit_price=round(limit_price, 2),
-            legs=[
-                OptionLegRequest(
-                    symbol=long_symbol,
-                    ratio_qty=1,
-                    side=OrderSide.BUY,
-                    position_intent=PositionIntent.BUY_TO_OPEN,
-                ),
-                OptionLegRequest(
-                    symbol=short_symbol,
-                    ratio_qty=1,
-                    side=OrderSide.SELL,
-                    position_intent=PositionIntent.SELL_TO_OPEN,
-                ),
-            ],
-        )
-        return self.trading.submit_order(req)
 
     def positions(self):
         return list(self.trading.get_all_positions())

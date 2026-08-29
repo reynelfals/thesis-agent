@@ -1,5 +1,9 @@
 # Thesis demo script — 2 minutes 30 seconds
 
+**Rendered video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)  
+**Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)  
+**Public demo:** <https://thesis-agent.replit.app>
+
 ## Recording checklist
 
 - Use the published app, not localhost.
@@ -7,8 +11,9 @@
 - Keep the full paper account ID, keys, terminal environment, and raw broker
   responses out of frame.
 - Use the fresh $100,000 competition paper account.
-- Prefer the Monday market-open record if it qualifies. A blocked/no-trade record
-  is still truthful evidence; never force a setup.
+- The packaged video truthfully shows pre-cycle readiness. After Monday, replace
+  only the result scene if broker evidence exists. A blocked/no-trade record is
+  still truthful evidence; never force a setup.
 
 ## Shot list and narration
 
@@ -26,27 +31,31 @@
 
 > Each autonomous cycle reads live Alpaca paper data and asks Grok-4.6 for a
 > structured thesis: direction, setup, invalidation, horizon, expected move, and
-> conviction. Grok cannot choose contracts, size risk, or place an order.
+> conviction. Grok sees only filtered, read-only `get_stock_snapshot` and
+> `get_option_chain` tools scoped to the deterministic shortlist. The application
+> harness owns account, clock, and order-status calls.
 
 ### 0:40–1:05 — Deterministic options and risk
 
 **Screen:** Show the spread and gate evidence.
 
-> Code constructs a defined-risk debit vertical between 14 and 45 days to expiry.
-> Before submission it enforces the allowlist, minimum conviction, quote quality,
-> two-percent per-trade risk, six-percent aggregate risk, position limits, paper
-> endpoint, options approval, market hours, and explicit execution enablement.
+> Grok calls `request_defined_risk_spread`, which is only a request. Code rebuilds
+> the contracts, refreshes quotes, and validates liquidity, DTE, sizing, and risk.
+> Before submission it also enforces the allowlist, minimum conviction, two-percent
+> per-trade risk, six-percent aggregate risk, position limits, paper-only endpoint,
+> mandatory options level 3, market hours, and explicit execution enablement.
 
-### 1:05–1:35 — Real Alpaca CLI proof
+### 1:05–1:35 — Official Alpaca MCP proof
 
 **Screen:** Tool trace and order-intent evidence.
 
-> Alpaca CLI is in the actual trading path. Every cycle proves the paper account
-> and clock through the CLI. Eligible orders use `alpaca api POST /v2/orders`.
-> There is no SDK order fallback. If the CLI fails or returns an ambiguous response,
-> Thesis stops instead of risking a duplicate order.
+> The official Alpaca MCP server is the agent tool boundary.
+> `place_option_order` is the only write path, with no CLI or SDK write fallback.
+> A timeout, malformed response, missing order ID, or ambiguous submission is
+> terminal and never retried.
 
-**If submitted:** Point to the CLI order ID and broker status.
+**Only if a real MCP order has been submitted:** Point to the MCP order ID and
+broker status; show a fill only if broker evidence exists.
 
 **If blocked/no trade:**
 
@@ -60,7 +69,8 @@
 > The dashboard reconciles the local append-only decision ledger with Alpaca orders,
 > fills, positions, and portfolio history. It separates realized from unrealized
 > P&L, shows reconciliation, and never invents an exit before the broker evidence
-> exists.
+> exists. SDK reads may support this monitoring and performance view. Historical
+> CLI rows remain readable; new cycles record `tool_path=mcp` and no CLI commands.
 
 ### 2:05–2:30 — Close
 

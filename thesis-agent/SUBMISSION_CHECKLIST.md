@@ -6,25 +6,27 @@
 ## Required deliverables
 
 - [x] Public GitHub repository: <https://github.com/reynelfals/thesis-agent>
-- [ ] Published application URL
-- [ ] Demo video URL
+- [x] Published application URL: <https://thesis-agent.replit.app>
+- [x] Narrated MP4 at `submission_assets/thesis-demo.mp4`
+- [x] Direct video URL:
+  <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
+- [x] Dedicated PDF presentation at `submission_assets/thesis-slides.pdf`
+- [x] MIT license
 - [x] One-page write-up from `SUBMISSION.md`
 - [x] Verified single-page US Letter PDF at
   `submission_assets/thesis-one-page.pdf`
-- [ ] Brand-new Alpaca paper account dedicated to the hackathon
-- [ ] Competition account starting balance set to exactly $100,000
-- [ ] Options trading level 3
+- [x] Brand-new Alpaca paper account dedicated to the hackathon
+- [x] Competition account starting balance set to exactly $100,000
+- [x] Options trading level 3
 - [ ] Full Alpaca paper account ID entered in lablab.ai’s private submission field
-- [ ] Trading API, options strategy, and real Alpaca CLI path demonstrated
+- [ ] Trading API, options strategy, and official Alpaca MCP path demonstrated
 - [ ] Current P&L and trading activity visible from the submitted account
 - [ ] Up to five optional X/LinkedIn build-in-public links
 
 ## Before publishing
 
 ```bash
-export PATH="/home/runner/go/bin:$PATH"
 cd thesis-agent
-bash scripts/install_alpaca_cli.sh
 PYTHONPATH=. pytest -q
 PYTHONPATH=. python -m thesis.smoke
 ```
@@ -36,39 +38,46 @@ PYTHONPATH=. python -m thesis.smoke
   containing credentials
 - [ ] `THESIS_ALLOW_EXECUTE=0` for normal dashboard hosting
 
-## Monday one-shot CLI order capture
+## Automatic Monday one-shot MCP order capture
 
-Do this after **9:30 AM EDT on Monday, August 31, 2026**, while the US options
-market is open.
+The published VM's dedicated scheduler subprocess is armed for **9:35 AM EDT on
+Monday, August 31, 2026**. It enables execution only inside that worker process;
+the dashboard subprocess remains read-only. The development scheduler must stay
+stopped so there is only one execution worker.
 
-1. Open the dashboard and confirm paper endpoint, fresh-account baseline, options
-   level 3, broker reads, and CLI readiness.
-2. Keep execution disabled and run one read-only cycle first:
-
-   ```bash
-   cd thesis-agent
-   THESIS_ALLOW_EXECUTE=0 PYTHONPATH=. python scripts/run_cycle.py
-   ```
-
-3. Review the proposed thesis and every gate. If the result is `no_trade`,
-   `rejected`, or `blocked`, accept it. Do not lower conviction, change risk limits,
-   fabricate quotes, or substitute a hand-built order.
-4. Only for a one-shot eligible cycle, set `THESIS_ALLOW_EXECUTE=1` through Replit
-   Secrets/environment controls and run:
-
-   ```bash
-   PYTHONPATH=. python scripts/run_cycle.py
-   ```
-
-5. Immediately restore `THESIS_ALLOW_EXECUTE=0`.
+1. Before Monday, confirm the production log reports `state=waiting`,
+   `outcome=armed`, and the correct target time.
+2. Leave the dashboard workflow running normally with execution disabled. Do not
+   set `THESIS_ALLOW_EXECUTE=1` globally.
+3. At 9:35 AM EDT, the separate worker atomically claims the fixed run ID and
+   starts one fresh cycle. A 15-minute grace window allows minor infrastructure
+   delay; after 9:50 AM EDT an unclaimed run is permanently recorded as skipped.
+4. The worker exits after a completed, failed, or skipped attempt. Any restart
+   after the claim is a no-op, including after an ambiguous submission.
+5. After the cycle, inspect the dashboard and worker result:
+   - `completed` with `submitted`, `blocked`, `rejected`, or `no_trade`
+   - `failed` when configuration or cycle execution failed after the claim
+   - `skipped` when the authorized window expired
+   - `already_claimed` when a duplicate worker start was safely ignored
 6. If an order was submitted, wait for the dashboard refresh and capture:
-   - CLI `api POST /v2/orders` success
-   - returned paper order ID
+   - the single `place_option_order` dispatch
+   - returned MCP paper order ID
    - broker status and fills
    - linked position/monitoring state
    - updated P&L and equity curve
-7. If no order qualified, keep the refusal as evidence and try only after genuinely
-   new market information. Never loop until the model happens to say yes.
+
+If no order qualifies, keep the refusal as evidence. Do not lower conviction,
+change risk limits, fabricate quotes, substitute a hand-built order, or launch
+another cycle until genuinely new market information exists.
+
+Do not claim a real MCP fill until broker evidence has been captured. The harness
+owns account, clock, and order-status MCP calls. Grok receives only shortlist-scoped,
+read-only `get_stock_snapshot` and `get_option_chain`, then requests
+`request_defined_risk_spread`; deterministic code rebuilds and validates the spread.
+`place_option_order` is the only write path, with no CLI/SDK write fallback. Timeout,
+malformed, missing-order-ID, and ambiguous outcomes are terminal and never retried.
+New cycles must show `tool_path=mcp` and empty `cli_commands`; historical CLI rows
+may remain readable.
 
 ## Final lablab.ai form
 
@@ -76,8 +85,9 @@ market is open.
 - **Tagline:** Propose. Prove. Execute.
 - **Category:** Options Alpha Agents
 - **Repository:** <https://github.com/reynelfals/thesis-agent>
-- **App URL:** `[ADD PUBLISHED REPLIT URL]`
-- **Video:** `[ADD VIDEO URL]`
+- **App URL:** <https://thesis-agent.replit.app>
+- **Video:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
+- **Slides:** `submission_assets/thesis-slides.pdf`
 - **Paper account ID:** `[ENTER IN PRIVATE FORM — DO NOT COMMIT]`
 - **Write-up:** Paste `SUBMISSION.md`
 - **Social links:** Add up to five approved posts from `SOCIAL_POSTS.md`

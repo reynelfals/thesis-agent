@@ -10,3 +10,8 @@ node_modules/
 data/
 dist/
 thesis.egg-info/
+thesis-agent/submission_assets/audio/
+thesis-agent/submission_assets/slides/
+thesis-agent/submission_assets/video_parts/
+thesis-agent/submission_assets/one-page-preview.png
+thesis-agent/submission_assets/thesis-submission-package.zip

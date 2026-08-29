@@ -1,4 +1,4 @@
-"""Draft a grok-4.6 thesis from paper market data. Does not place orders."""
+"""Draft a guarded MCP thesis. Execution is always disabled."""
 
 from __future__ import annotations
 
@@ -8,19 +8,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from thesis.alpaca.client import PaperClient
 from thesis.config import load_settings
-from thesis.llm import draft_thesis
-from thesis.observe import universe
-from thesis.store import ThesisStore
+from thesis.cycle import run_cycle
 
 
 def main() -> None:
     settings = load_settings()
-    client = PaperClient(settings)
-    snaps = universe(client)
-    thesis = draft_thesis(settings, snaps)
-    ThesisStore(settings.db_path).upsert(thesis)
+    result = run_cycle(settings, execute=False)
+    thesis = result.thesis
     print(
         json.dumps(
             {
@@ -34,6 +29,8 @@ def main() -> None:
                 "horizon": thesis.horizon,
                 "iv_note": thesis.iv_note,
                 "model": settings.grok_model,
+                "decision": result.decision,
+                "tool_path": result.tool_path,
             },
             indent=2,
         )

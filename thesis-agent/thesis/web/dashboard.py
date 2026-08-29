@@ -102,7 +102,7 @@ def _gate_rows(gates: Any) -> list[dict[str, Any]]:
 def _safe_structure(value: Any) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
-    keys = (
+    required_keys = (
         "kind",
         "underlying",
         "long_symbol",
@@ -115,7 +115,106 @@ def _safe_structure(value: Any) -> dict[str, Any] | None:
         "qty",
         "max_loss_usd",
     )
-    return {key: value.get(key) for key in keys}
+    optional_number_keys = (
+        "avg_dollar_volume_20d",
+        "min_avg_dollar_volume",
+        "max_option_bid_ask_pct",
+        "long_bid_ask_pct",
+        "short_bid_ask_pct",
+    )
+    result = {key: value.get(key) for key in required_keys}
+    result.update(
+        {
+            key: value[key]
+            for key in optional_number_keys
+            if isinstance(value.get(key), (int, float))
+            and not isinstance(value.get(key), bool)
+        }
+    )
+    return result
+
+
+def _safe_scout_leaderboard(values: Any) -> list[dict[str, Any]]:
+    """Expose only the documented, primitive scout leaderboard contract."""
+    string_keys = ("symbol", "regime", "status", "reason")
+    number_keys = (
+        "stock_score",
+        "call_count",
+        "put_count",
+        "options_score",
+        "total_score",
+        "avg_dollar_volume_20d",
+        "min_avg_dollar_volume",
+        "max_option_bid_ask_pct",
+    )
+    factor_keys = (
+        "trend_distance",
+        "trend_alignment",
+        "trend",
+        "momentum_5d",
+        "volatility_fit",
+    )
+    rows: list[dict[str, Any]] = []
+    for value in values or []:
+        if not isinstance(value, dict):
+            continue
+        row: dict[str, Any] = {}
+        for key in string_keys:
+            if isinstance(value.get(key), str):
+                row[key] = _public_text(value[key])
+        rank = value.get("stock_rank")
+        if rank is None or (isinstance(rank, int) and not isinstance(rank, bool)):
+            row["stock_rank"] = rank
+        for key in number_keys:
+            item = value.get(key)
+            if isinstance(item, (int, float)) and not isinstance(item, bool):
+                row[key] = item
+        if isinstance(value.get("probed"), bool):
+            row["probed"] = value["probed"]
+        sides = value.get("feasible_sides")
+        if isinstance(sides, list):
+            row["feasible_sides"] = [
+                _public_text(side) for side in sides if isinstance(side, str)
+            ]
+        factors = value.get("factors")
+        if isinstance(factors, dict):
+            row["factors"] = {
+                key: factors[key]
+                for key in factor_keys
+                if isinstance(factors.get(key), (int, float))
+                and not isinstance(factors.get(key), bool)
+            }
+        option_liquidity = value.get("option_liquidity")
+        if isinstance(option_liquidity, dict):
+            row["option_liquidity"] = {
+                side: [
+                    {
+                        key: (
+                            _public_text(leg[key])
+                            if key == "symbol"
+                            else leg[key]
+                        )
+                        for key in (
+                            "symbol",
+                            "bid_price",
+                            "ask_price",
+                            "bid_ask_pct",
+                        )
+                        if (
+                            isinstance(leg.get(key), str)
+                            if key == "symbol"
+                            else isinstance(leg.get(key), (int, float))
+                            and not isinstance(leg.get(key), bool)
+                        )
+                    }
+                    for leg in legs
+                    if isinstance(leg, dict)
+                ]
+                for side, legs in option_liquidity.items()
+                if side in {"bullish", "bearish"} and isinstance(legs, list)
+            }
+        rows.append(row)
+    return rows
 
 
 def _safe_thesis(value: Any) -> dict[str, Any]:
@@ -145,6 +244,7 @@ def _safe_thesis(value: Any) -> dict[str, Any]:
         for key in keys
     }
     result["structure"] = _safe_structure(thesis.get("structure"))
+    result["leaderboard"] = _safe_scout_leaderboard(thesis.get("leaderboard"))
     return result
 
 
@@ -225,7 +325,7 @@ def _safe_monitoring(value: Any) -> dict[str, Any] | None:
 
 
 def _safe_market_snapshots(values: Any) -> list[dict[str, Any]]:
-    keys = (
+    required_keys = (
         "symbol",
         "spot",
         "sma5",
@@ -234,11 +334,19 @@ def _safe_market_snapshots(values: Any) -> list[dict[str, Any]]:
         "realized_vol_20d",
         "regime",
     )
-    return [
-        {key: value.get(key) for key in keys}
-        for value in values or []
-        if isinstance(value, dict)
-    ]
+    rows: list[dict[str, Any]] = []
+    for value in values or []:
+        if not isinstance(value, dict):
+            continue
+        row = {key: value.get(key) for key in required_keys}
+        avg_dollar_volume = value.get("avg_dollar_volume_20d")
+        if (
+            isinstance(avg_dollar_volume, (int, float))
+            and not isinstance(avg_dollar_volume, bool)
+        ):
+            row["avg_dollar_volume_20d"] = avg_dollar_volume
+        rows.append(row)
+    return rows
 
 
 def _safe_cycle_performance(value: Any) -> dict[str, Any] | None:
@@ -619,7 +727,7 @@ class Dashboard:
             "tool_path": (
                 _text(cycle.get("tool_path") or thesis.get("tool_path"))
                 if _text(cycle.get("tool_path") or thesis.get("tool_path"))
-                in {"cli", "alpaca-py", "none"}
+                in {"mcp", "cli", "alpaca-py", "none"}
                 else "unknown"
             ),
             "order_status": order.status if order else thesis.get("order_status") or "not_submitted",

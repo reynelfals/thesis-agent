@@ -2,5 +2,7 @@ alpaca-py>=0.40.0
 python-dotenv>=1.0.0
 pydantic>=2.0.0
 openai>=1.40.0
+mcp>=1.29.1,<2.0.0
+alpaca-mcp-server==2.3.0
 fastapi>=0.141.0
 uvicorn>=0.52.0

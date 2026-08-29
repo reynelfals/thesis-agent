@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
@@ -7,6 +8,9 @@ from dotenv import load_dotenv
 
 PAPER_BASE = "https://paper-api.alpaca.markets"
 LIVE_BASE = "https://api.alpaca.markets"
+DEFAULT_MIN_AVG_DOLLAR_VOLUME = 50_000_000.0
+DEFAULT_MAX_OPTION_BID_ASK_PCT = 25.0
+DEFAULT_SCOUT_UNIVERSE = "expanded"
 
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
@@ -23,6 +27,32 @@ def _require(name: str) -> str:
     return value
 
 
+def _number(
+    name: str,
+    default: float,
+    *,
+    minimum: float,
+    maximum: float | None = None,
+) -> float:
+    try:
+        value = float(os.getenv(name, str(default)))
+    except ValueError as exc:
+        raise ConfigError(f"{name} must be a number") from exc
+    if not math.isfinite(value) or value < minimum:
+        raise ConfigError(f"{name} must be at least {minimum}")
+    if maximum is not None and value > maximum:
+        raise ConfigError(f"{name} must be at most {maximum}")
+    return value
+
+
+def _choice(name: str, default: str, allowed: set[str]) -> str:
+    value = os.getenv(name, default).strip().lower()
+    if value not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise ConfigError(f"{name} must be one of: {choices}")
+    return value
+
+
 class Settings:
     api_key: str
     secret_key: str
@@ -32,6 +62,9 @@ class Settings:
     db_path: Path
     allow_execute: bool
     demo_starting_equity: float
+    min_avg_dollar_volume: float
+    max_option_bid_ask_pct: float
+    scout_universe: str
 
     def __init__(self) -> None:
         self.api_key = _require("APCA_API_KEY_ID")
@@ -48,12 +81,27 @@ class Settings:
             "true",
             "yes",
         }
-        try:
-            self.demo_starting_equity = float(
-                os.getenv("THESIS_DEMO_STARTING_EQUITY", "100000")
-            )
-        except ValueError as exc:
-            raise ConfigError("THESIS_DEMO_STARTING_EQUITY must be a number") from exc
+        self.demo_starting_equity = _number(
+            "THESIS_DEMO_STARTING_EQUITY",
+            100_000.0,
+            minimum=0.0,
+        )
+        self.min_avg_dollar_volume = _number(
+            "THESIS_MIN_AVG_DOLLAR_VOLUME",
+            DEFAULT_MIN_AVG_DOLLAR_VOLUME,
+            minimum=0.0,
+        )
+        self.max_option_bid_ask_pct = _number(
+            "THESIS_MAX_OPTION_BID_ASK_PCT",
+            DEFAULT_MAX_OPTION_BID_ASK_PCT,
+            minimum=0.0,
+            maximum=200.0,
+        )
+        self.scout_universe = _choice(
+            "THESIS_SCOUT_UNIVERSE",
+            DEFAULT_SCOUT_UNIVERSE,
+            {"baseline", "expanded"},
+        )
 
     def assert_paper(self) -> None:
         if self.base_url != PAPER_BASE:

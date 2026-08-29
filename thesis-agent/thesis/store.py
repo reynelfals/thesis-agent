@@ -69,6 +69,18 @@ class ThesisStore:
                 """
             )
             conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS scheduled_runs (
+                    run_id TEXT PRIMARY KEY,
+                    target_at TEXT NOT NULL,
+                    claimed_at TEXT NOT NULL,
+                    finished_at TEXT NOT NULL DEFAULT '',
+                    state TEXT NOT NULL,
+                    outcome TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_cycles_created_at ON cycles(created_at DESC)"
             )
             conn.execute(
@@ -244,3 +256,53 @@ class ThesisStore:
         return [
             PerformanceSnapshot.model_validate_json(row["json"]) for row in rows
         ]
+
+    def claim_scheduled_run(
+        self,
+        *,
+        run_id: str,
+        target_at: str,
+        claimed_at: str,
+    ) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT OR IGNORE INTO scheduled_runs
+                    (run_id, target_at, claimed_at, state)
+                VALUES (?, ?, ?, 'claimed')
+                """,
+                (run_id, target_at, claimed_at),
+            )
+        return cursor.rowcount == 1
+
+    def finish_scheduled_run(
+        self,
+        *,
+        run_id: str,
+        state: str,
+        outcome: str,
+        finished_at: str,
+    ) -> None:
+        if state not in {"completed", "failed", "skipped"}:
+            raise ValueError("scheduled run state must be terminal")
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE scheduled_runs
+                SET state = ?, outcome = ?, finished_at = ?
+                WHERE run_id = ? AND state = 'claimed'
+                """,
+                (state, outcome[:80], finished_at, run_id),
+            )
+
+    def scheduled_run(self, run_id: str) -> dict[str, str] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT run_id, target_at, claimed_at, finished_at, state, outcome
+                FROM scheduled_runs
+                WHERE run_id = ?
+                """,
+                (run_id,),
+            ).fetchone()
+        return dict(row) if row else None

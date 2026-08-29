@@ -2,7 +2,44 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-ALLOWLIST = ("SPY", "QQQ", "IWM", "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA")
+BASELINE_UNIVERSE = (
+    "SPY",
+    "QQQ",
+    "IWM",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "META",
+    "GOOGL",
+    "TSLA",
+)
+
+# Broad-market ETFs plus every GICS sector. Each sector has a liquid ETF and
+# at least one liquid stock so expanded scouting is diversified without using
+# option data during the first-stage stock ranking.
+SECTOR_UNIVERSE = (
+    ("Broad market", ("SPY", "QQQ", "IWM")),
+    ("Communication Services", ("META", "GOOGL", "XLC")),
+    ("Consumer Discretionary", ("AMZN", "TSLA", "XLY")),
+    ("Consumer Staples", ("COST", "XLP")),
+    ("Energy", ("XOM", "XLE")),
+    ("Financials", ("JPM", "XLF")),
+    ("Health Care", ("LLY", "XLV")),
+    ("Industrials", ("CAT", "XLI")),
+    ("Information Technology", ("AAPL", "MSFT", "NVDA", "XLK")),
+    ("Materials", ("FCX", "XLB")),
+    ("Real Estate", ("PLD", "XLRE")),
+    ("Utilities", ("NEE", "XLU")),
+)
+
+_SECTOR_SYMBOLS = tuple(
+    symbol for _, symbols in SECTOR_UNIVERSE for symbol in symbols
+)
+EXPANDED_UNIVERSE = BASELINE_UNIVERSE + tuple(
+    symbol for symbol in _SECTOR_SYMBOLS if symbol not in BASELINE_UNIVERSE
+)
+ALLOWLIST = EXPANDED_UNIVERSE
 
 MIN_DTE = 14
 MAX_DTE = 45
@@ -14,6 +51,14 @@ MIN_CONVICTION = 0.35
 
 class RiskError(ValueError):
     pass
+
+
+def symbols_for_scout(profile: str) -> tuple[str, ...]:
+    if profile == "baseline":
+        return BASELINE_UNIVERSE
+    if profile == "expanded":
+        return EXPANDED_UNIVERSE
+    raise ValueError(f"unknown scout universe profile: {profile}")
 
 
 @dataclass(frozen=True)
