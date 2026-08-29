@@ -5,7 +5,7 @@
 
 ## Required deliverables
 
-- [ ] Public GitHub repository
+- [x] Public GitHub repository: <https://github.com/reynelfals/thesis-agent>
 - [ ] Published application URL
 - [ ] Demo video URL
 - [x] One-page write-up from `SUBMISSION.md`
@@ -75,7 +75,7 @@ market is open.
 - **Project name:** Thesis
 - **Tagline:** Propose. Prove. Execute.
 - **Category:** Options Alpha Agents
-- **Repository:** `[ADD PUBLIC GITHUB URL]`
+- **Repository:** <https://github.com/reynelfals/thesis-agent>
 - **App URL:** `[ADD PUBLISHED REPLIT URL]`
 - **Video:** `[ADD VIDEO URL]`
 - **Paper account ID:** `[ENTER IN PRIVATE FORM — DO NOT COMMIT]`
