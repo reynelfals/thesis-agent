@@ -1,4 +1,4 @@
-modules = ["python-3.11", "go-1.25", "nodejs-24"]
+modules = ["python-3.11", "go-1.25"]
 
 run = "export PATH=\"/home/runner/go/bin:$PATH\" && cd thesis-agent && PYTHONPATH=. uvicorn thesis.web.app:app --host 0.0.0.0 --port 5000"
 entrypoint = "thesis-agent/thesis/web/app.py"
