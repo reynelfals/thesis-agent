@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+.venv/
+venv/
+node_modules/
+*.pyc
+.DS_Store
+data/
+dist/
+thesis.egg-info/

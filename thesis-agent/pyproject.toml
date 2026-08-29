@@ -1,0 +1,28 @@
+[project]
+name = "thesis"
+version = "0.1.0"
+description = "Thesis — autonomous options agent that will not trade without a testable thesis"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "alpaca-py>=0.40.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
+    "openai>=1.40.0",
+    "fastapi>=0.141.0",
+    "uvicorn>=0.52.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[project.scripts]
+thesis-smoke = "thesis.smoke:main"
+thesis-heartbeat = "thesis.agent.heartbeat:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["thesis*"]

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Thesis hackathon submission brief">
+  <title>Thesis / Submission Brief</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body class="brief-body">
+<main class="brief shell">
+  <header class="topbar">
+    <div class="brand"><i class="mark" aria-hidden="true"></i>THESIS <span class="small">/ submission brief</span></div>
+    <nav class="topnav" aria-label="Primary"><a href="/">Audit console</a><a class="active" href="/brief" aria-current="page">Submission brief</a></nav>
+    <div class="brief-tag">OPTIONS ALPHA AGENTS</div>
+  </header>
+  <section class="brief-hero">
+    <div class="eyebrow">Hackathon submission · Paper trading only</div>
+    <h1>An options agent that must show its work.</h1>
+    <p>Thesis is an autonomous options agent for skeptical judges. It cannot risk a dollar until it writes why the trade exists, when it is wrong, and the maximum amount it can lose.</p>
+    <div class="brief-rule"><span>GROK PROPOSES</span><b>→</b><span>CODE CONTROLS</span><b>→</b><span>ALPACA PROVES</span></div>
+  </section>
+  <section class="brief-intro">
+    <p class="section-kicker">THE PROBLEM</p>
+    <p class="big-copy">Most “AI traders” collapse analysis, risk, and execution into one opaque prompt. A confident hallucination then looks exactly like a valid trade.</p>
+    <p>Thesis separates those responsibilities. Grok proposes a falsifiable idea; deterministic code decides whether that idea is tradable; Alpaca paper infrastructure proves what actually happened.</p>
+  </section>
+  <section class="brief-section">
+    <div><p class="section-kicker">01 / THE AGENT PATH</p><h2>One cycle. Five accountable steps.</h2></div>
+    <ol class="path">
+      <li><b>Read</b><span>Live paper-account state, positions, fills, and market data are read from Alpaca.</span></li>
+      <li><b>Propose</b><span>Grok-4.6 receives a compact market snapshot and returns structured JSON: underlying, direction, regime, setup, invalidation, horizon, expected move, IV note, and conviction.</span></li>
+      <li><b>Structure</b><span>If conviction clears the threshold, deterministic code builds a call or put debit vertical: 14–45 DTE near 25 DTE, approximately at-the-money long leg, defined-width short leg, and 1:1 day-limit MLEG.</span></li>
+      <li><b>Gate</b><span>Maximum loss is known before submission: net debit × 100 × quantity. A hard control stack determines whether the proposal may proceed.</span></li>
+      <li><b>Record</b><span>Every decision, including abstention, retains its proposal, controls, tool trace, order state, fills, monitoring, and reconciliation context.</span></li>
+    </ol>
+  </section>
+  <section class="brief-section controls">
+    <div><p class="section-kicker">02 / DETERMINISTIC CONTROL PLANE</p><h2>Language can suggest. It cannot authorize.</h2></div>
+    <div class="control-list">
+      <p>Paper endpoint only · active, unblocked account · options level 3 · valid CLI clock in agreement with SDK</p>
+      <p>Allowlisted underlying · conviction ≥ 0.35 · valid quotes and debit · 14–45 DTE · market open</p>
+      <p>No more than three open theses · ≤2% equity at risk per thesis · ≤6% aggregate risk · explicit execution enablement</p>
+    </div>
+    <p class="control-note">Any failed gate produces a recorded no-trade or blocked decision. Grok never chooses contracts, sizes risk, or submits orders.</p>
+  </section>
+  <section class="brief-section">
+    <div><p class="section-kicker">03 / ALPACA IN THE PATH</p><h2>Tool evidence, not a screenshot.</h2></div>
+    <div class="two-col">
+      <p>Alpaca Trading and Market Data APIs provide account state, positions, option contracts and quotes, stock trades and bars, order status, portfolio history, and fill activities.</p>
+      <p>Alpaca CLI is part of the agent path: every cycle runs <code>alpaca account get</code> and <code>alpaca clock</code>. An eligible spread is submitted only through <code>alpaca api POST /v2/orders</code>.</p>
+    </div>
+    <aside class="fail-closed"><strong>FAIL CLOSED</strong><span>Invalid CLI JSON, a blocked account, insufficient options level, clock disagreement, timeout, rejection, or a response without an order ID stops the cycle. No SDK retry occurs after an ambiguous CLI response.</span></aside>
+  </section>
+  <section class="brief-section evidence">
+    <div><p class="section-kicker">04 / THE AUDIT CONSOLE</p><h2>Every claim links to evidence.</h2></div>
+    <p>The live dashboard is read-only. It renders before broker data arrives, then reconciles an append-only SQLite decision ledger with Alpaca paper data in the background.</p>
+    <ul><li>Grok thesis and deterministic gates</li><li>Sanitized CLI/API trace and exact blocked MLEG intent</li><li>Broker order state, fills, and position attribution</li><li>Exit state, realized and unrealized P&amp;L, reconciliation delta, and equity curve</li></ul>
+    <a class="console-link" href="/">Open the live audit console <span aria-hidden="true">→</span></a>
+  </section>
+  <section class="closing"><p class="section-kicker">WHY THESIS</p><h2>Evidence over assertion.</h2><p>The model is creative where language is useful and powerless where deterministic controls are safer. Its reasoning, abstention, risk, tool use, and broker outcome can be judged from one screen.</p><small>Paper trading only. This project is a hackathon demonstration, not investment advice.</small></section>
+  <article class="print-sheet" aria-label="Thesis one-page submission">
+    <header class="print-sheet-head">
+      <div>
+        <p class="print-kicker">OPTIONS ALPHA AGENTS · ONE-PAGE WRITE-UP</p>
+        <h1>THESIS</h1>
+      </div>
+      <p class="print-tagline">Propose. Prove. Execute.</p>
+    </header>
+    <section class="print-pitch">
+      <h2>An options agent that must show its work.</h2>
+      <p>Thesis is an autonomous options agent that cannot risk a dollar until it writes why the trade exists, when it is wrong, and the maximum amount it can lose. Grok proposes a falsifiable idea; deterministic code decides whether it is tradable; Alpaca paper infrastructure proves what occurred.</p>
+    </section>
+    <div class="print-columns">
+      <section>
+        <p class="print-kicker">AI LOGIC</p>
+        <h3>Creative thesis. Bounded authority.</h3>
+        <p>Each cycle reads live Alpaca paper-account state, positions, fills, and market data. Grok-4.6 returns structured JSON: underlying, direction, regime, setup, invalidation, horizon, expected move, IV note, and conviction. It never chooses contracts, sizes risk, or submits orders.</p>
+        <p>At qualifying conviction, code constructs a call or put debit vertical: 14–45 DTE near 25 DTE, approximately at-the-money long leg, defined-width short leg, and 1:1 day-limit MLEG. Maximum loss is known before submission: net debit × 100 × quantity.</p>
+      </section>
+      <section>
+        <p class="print-kicker">RISK GATES</p>
+        <h3>Language cannot authorize.</h3>
+        <p>Hard controls require a paper endpoint; active, unblocked account; options level 3; valid CLI clock agreeing with the SDK; allowlisted underlying; conviction ≥0.35; valid quotes and debit; 14–45 DTE; market open; no more than three open theses; ≤2% equity risk per thesis; ≤6% aggregate risk; and explicit execution enablement.</p>
+        <p>Any failure records a no-trade or blocked decision. Abstention is evidence, not an error.</p>
+      </section>
+      <section>
+        <p class="print-kicker">ALPACA INFRASTRUCTURE</p>
+        <h3>Tool evidence, not a screenshot.</h3>
+        <p>Alpaca Trading and Market Data APIs supply account state, contracts, quotes, bars, orders, fills, positions, and portfolio history. Every cycle runs <code>alpaca account get</code> and <code>alpaca clock</code>. Eligible orders submit only through <code>alpaca api POST /v2/orders</code>.</p>
+        <p>Invalid CLI JSON, account restrictions, clock disagreement, timeout, rejection, or a response without an order ID stops the cycle. There is no SDK order fallback after an ambiguous result.</p>
+      </section>
+    </div>
+    <section class="print-evidence">
+      <div>
+        <p class="print-kicker">EVIDENCE &amp; PERFORMANCE</p>
+        <p>The read-only FastAPI console reconciles an append-only SQLite decision ledger with Alpaca orders, fills, positions, and portfolio history. Judges can inspect the thesis, gates, sanitized CLI/API trace, MLEG intent, broker state, realized and unrealized P&amp;L, reconciliation delta, and equity curve. Values come directly from the submitted paper account; none are hardcoded.</p>
+      </div>
+      <div>
+        <p class="print-kicker">WHY THESIS</p>
+        <p><strong>Evidence over assertion.</strong> The model is creative where language is useful and powerless where deterministic controls are safer. Every trade—and every refusal to trade—is explainable from one screen.</p>
+      </div>
+    </section>
+    <footer class="print-footer"><span>THESIS / PAPER TRADING ONLY</span><span>Hackathon demonstration · Not investment advice</span></footer>
+  </article>
+</main>
+</body>
+</html>
