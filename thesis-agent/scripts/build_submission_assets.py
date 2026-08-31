@@ -20,7 +20,7 @@ ASSETS = ROOT / "submission_assets"
 SLIDES_DIR = ASSETS / "slides"
 AUDIO_DIR = ASSETS / "audio"
 PARTS_DIR = ASSETS / "video_parts"
-AUDIO_TEMPO = 1.30
+AUDIO_TEMPO = 1.00
 
 WIDTH = 1920
 HEIGHT = 1080
@@ -434,14 +434,18 @@ def render_slide_6() -> Image.Image:
 
 def render_slide_7() -> Image.Image:
     image, draw = base_slide(7, "Production readiness")
-    slide_title(draw, "Ready for the paper-market proof.", "One production worker. One durable claim. One public audit ledger.")
+    slide_title(
+        draw,
+        "The proof includes a safe refusal.",
+        "Live paper-account and MCP checks passed. Deterministic scouting stopped the cycle.",
+    )
     checks = [
         ("PAPER", "Paper endpoint", "PASS"),
         ("ACCOUNT", "Fresh $100,000 baseline", "PASS"),
         ("OPTIONS", "Trading level 3", "PASS"),
-        ("BROKER", "Read health", "PASS"),
-        ("SCHEDULE", "Monday · 9:35 AM EDT", "ARMED"),
-        ("DASHBOARD", "Execution disabled", "READ ONLY"),
+        ("MCP", "Official tools discovered", "PASS"),
+        ("SCOUT", "Option-feasible candidates", "ZERO"),
+        ("OUTCOME", "Broker order submitted", "NO TRADE"),
     ]
     positions = [(72, 360), (660, 360), (1248, 360), (72, 620), (660, 620), (1248, 620)]
     for (label, title, status), (x, y) in zip(checks, positions):
@@ -452,7 +456,7 @@ def render_slide_7() -> Image.Image:
         draw.text((x + 34, y + 157), status, font=font(19, bold=True, mono=True), fill=INK)
     draw.text(
         (75, 916),
-        "No fill is claimed until the submitted paper account and broker evidence prove it.",
+        "No candidate passed deterministic scouting; no broker order or fill is claimed.",
         font=font(23, bold=True),
         fill=CORAL,
     )

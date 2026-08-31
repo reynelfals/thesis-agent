@@ -1,0 +1,172 @@
+{
+  "schema_version": "thesis-strategy-spec-v1",
+  "strategy_id": "thesis-recorded-grok-defined-risk-v1",
+  "frozen_at": "2026-08-31T02:57:23Z",
+  "purpose": "Prospective scientific evaluation; not a profitability claim",
+  "universe": [
+    "SPY",
+    "QQQ",
+    "IWM",
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "META",
+    "GOOGL",
+    "TSLA",
+    "XLC",
+    "XLY",
+    "COST",
+    "XLP",
+    "XOM",
+    "XLE",
+    "JPM",
+    "XLF",
+    "LLY",
+    "XLV",
+    "CAT",
+    "XLI",
+    "XLK",
+    "FCX",
+    "XLB",
+    "PLD",
+    "XLRE",
+    "NEE",
+    "XLU"
+  ],
+  "schedule": {
+    "weekday": "Monday",
+    "decision_time": "09:35:00",
+    "timezone": "America/New_York",
+    "frequency": "weekly prospective study",
+    "timestamp_tolerance_seconds": 0
+  },
+  "signal": {
+    "history_sessions": 40,
+    "completed_bars_only": true,
+    "stock_score_weights": {
+      "trend": 0.45,
+      "momentum_5d": 0.35,
+      "volatility_fit": 0.2
+    },
+    "stock_probe_limit": 5,
+    "option_feasible_shortlist_limit": 3,
+    "minimum_stock_average_dollar_volume": 50000000.0,
+    "required_stock_spot_source": "SIP",
+    "maximum_leg_bid_ask_percent": 25.0,
+    "directional_thresholds": "No retrospective proxy is permitted"
+  },
+  "grok_decision": {
+    "model": "grok-4.6",
+    "request_schema": "request_defined_risk_spread-v1",
+    "artifact_schema": "thesis-grok-decision-record-v1",
+    "mapping": "Use only a contemporaneously recorded, schema-valid decision whose side was option-feasible; never reconstruct decisions with later information",
+    "historical_reconstruction": "forbidden",
+    "minimum_conviction": 0.35,
+    "required_fields": [
+      "underlying",
+      "direction",
+      "regime",
+      "setup",
+      "invalidation",
+      "horizon",
+      "expected_move_pct",
+      "iv_note",
+      "conviction"
+    ]
+  },
+  "spread": {
+    "minimum_dte": 14,
+    "maximum_dte": 45,
+    "target_dte": 25,
+    "long_strike": "nearest to point-in-time underlying spot",
+    "width": "max(5, round(spot * 0.012))",
+    "minimum_natural_debit": 0.15,
+    "maximum_debit_fraction_of_width": 0.55,
+    "limit_above_natural_debit": 0.1
+  },
+  "risk": {
+    "maximum_open_positions": 3,
+    "maximum_debit_per_trade_fraction": 0.02,
+    "maximum_aggregate_debit_fraction": 0.06,
+    "quantity": "floor(equity * 0.02 * max(conviction, 0.35) / (limit_debit * 100))",
+    "correlation_limit": "not implemented; reported as a limitation"
+  },
+  "execution": {
+    "order_class": "mleg",
+    "order_type": "limit",
+    "time_in_force": "day",
+    "entry_window_seconds": 300,
+    "maximum_signal_to_submission_seconds": 120,
+    "maximum_signal_to_fill_seconds": 300,
+    "minimum_submit_latency_milliseconds": 250,
+    "maximum_intent_quote_age_seconds": 2,
+    "slippage_per_leg": 0.02,
+    "option_fee_per_contract_per_leg": 0.65,
+    "closing_regulatory_fee_per_contract": 0.03,
+    "partial_quantity_policy": "Accept paired multi-leg quantity up to displayed size; cancel unfilled remainder at entry-window end",
+    "ambiguous_submission_policy": "terminal_no_retry",
+    "required_quote_source": "OPRA"
+  },
+  "exit": {
+    "policy_status": "study-only candidate; deployed strategy has no executable close policy",
+    "profit_target_fraction_of_entry_debit": 0.5,
+    "stop_loss_fraction_of_entry_debit": 0.5,
+    "close_by_dte": 7,
+    "expiration_market_close": "16:00:00",
+    "close_slippage_per_leg": 0.02,
+    "unfilled_close_policy": "Continue evaluating later NBBO pairs; settle at expiration if still open",
+    "expiration_settlement": "intrinsic value using contemporaneous underlying expiration mark",
+    "assignment_fee_per_contract": 5.0,
+    "required_underlying_settlement_source": "SIP"
+  },
+  "validation": {
+    "dataset_schema": "thesis-edge-dataset-v1",
+    "required_nbbo_source": "OPRA",
+    "minimum_filled_trades": 100,
+    "minimum_filled_trades_per_regime": 15,
+    "minimum_calendar_days": 365,
+    "minimum_daily_equity_observations": 200,
+    "required_regimes": [
+      "bull",
+      "bear",
+      "high_vol",
+      "low_vol"
+    ],
+    "regime_classifier": {
+      "symbol": "SPY",
+      "trend_rule": "bull when point-in-time spot is at or above completed-bar SMA20; bear otherwise",
+      "volatility_rule": "high_vol when 20-session annualized realized volatility is above 0.22; low_vol otherwise",
+      "high_volatility_threshold": 0.22
+    },
+    "required_benchmarks": [
+      "SPY_BUY_HOLD",
+      "CASH"
+    ],
+    "benchmark_spot_source": "SIP",
+    "maximum_adjusted_one_sided_p_value": 0.05,
+    "minimum_expectancy_confidence_bound": 0.0,
+    "minimum_sharpe_advantage_over_best_benchmark": 0.0,
+    "bootstrap_samples": 2000,
+    "bootstrap_block_length": 5,
+    "random_seed": 731947,
+    "inference_method": "circular moving-block bootstrap of chronologically ordered trade P&L",
+    "multiple_testing_method": "bonferroni_declared_variant_count",
+    "primary_partition": "untouched_holdout",
+    "independent_replication_required": true,
+    "canonical_dataset_hash": "SHA-256 of canonical sorted-key JSON excluding the detached _artifact_sha256 field",
+    "required_source_artifact_roles": [
+      "raw_archive",
+      "query_manifest"
+    ],
+    "decision_rule": "Reject the positive-edge claim unless every pre-registered criterion passes"
+  },
+  "runtime_source_fingerprints": {
+    "thesis/observe.py": "3884f68d284a333247a4d32dfcd6e93bab7562f073bcf01895fa448ec58838f2",
+    "thesis/scout.py": "d5141f6cf6cc571fbe2eed28afb37c05cac65cd79a0a9b6a5bd6a8bea8fc7235",
+    "thesis/risk.py": "d8f72af0b7e19258b584ffdb06e67ffa6645c8a95886ccc934ebb4aa24da641b",
+    "thesis/spread.py": "430e65e83d5059da18f84d2c2a48f69247eab49711996520bf58d04499dd3c5a",
+    "thesis/llm.py": "bddcb225e50c7c4bfae936c34a3e738e7ae6c1febdf21baa59a73d4fd87cbc44",
+    "thesis/cycle.py": "7a00eb7730788c8604b8c200cd7b99aa2bd4e93bf6f947a8cd26024b92ccc6a8"
+  }
+}

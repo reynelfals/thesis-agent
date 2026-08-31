@@ -1,7 +1,7 @@
 {
   "file": "thesis-demo.mp4",
-  "duration_seconds": 154.999,
-  "sha256": "a8670f1060cffc60bc50c6c84ef9ed734e46d14eaf6653af803125708f93069e",
+  "duration_seconds": 210.402,
+  "sha256": "f6344a09e4cb60fefc66563bfae63db6f884496d26cf1b5c59d425cf4d7ab1f9",
   "resolution": "1920x1080",
   "video_codec": "H.264",
   "audio_codec": "AAC",
@@ -9,42 +9,42 @@
     {
       "slide": "slide-01.png",
       "narration": "slide-01.mp3",
-      "duration_seconds": 13.964
+      "duration_seconds": 18.033
     },
     {
       "slide": "slide-02.png",
       "narration": "slide-02.mp3",
-      "duration_seconds": 18.183
+      "duration_seconds": 23.518
     },
     {
       "slide": "slide-03.png",
       "narration": "slide-03.mp3",
-      "duration_seconds": 17.359
+      "duration_seconds": 22.447
     },
     {
       "slide": "slide-04.png",
       "narration": "slide-04.mp3",
-      "duration_seconds": 24.895
+      "duration_seconds": 32.243
     },
     {
       "slide": "slide-05.png",
       "narration": "slide-05.mp3",
-      "duration_seconds": 20.072
+      "duration_seconds": 25.974
     },
     {
       "slide": "slide-06.png",
       "narration": "slide-06.mp3",
-      "duration_seconds": 22.926
+      "duration_seconds": 29.683
     },
     {
       "slide": "slide-07.png",
       "narration": "slide-07.mp3",
-      "duration_seconds": 19.007
+      "duration_seconds": 34.438
     },
     {
       "slide": "slide-08.png",
       "narration": "slide-08.mp3",
-      "duration_seconds": 18.646
+      "duration_seconds": 24.119
     }
   ]
 }

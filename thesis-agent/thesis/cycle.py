@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from thesis.alpaca.client import PaperClient
 from thesis.audit import (
@@ -33,7 +35,8 @@ from thesis.scout import (
     compare_stock_candidates,
     scout_market,
 )
-from thesis.spread import SpreadError, build_debit_vertical
+from thesis.single_option import build_single_option
+from thesis.spread import SpreadError
 from thesis.store import ThesisStore
 from thesis.tools.mcp import AlpacaMcpSession, McpError, McpToolResult
 
@@ -99,48 +102,75 @@ def _latest_baseline_scout_trace(
     return None
 
 
-def _mleg_intent(thesis: Thesis) -> dict[str, Any]:
+def _single_option_intent(thesis: Thesis) -> dict[str, Any]:
     assert thesis.structure is not None
     s = thesis.structure
     return {
-        "order_class": "mleg",
+        "symbol": s.long_symbol,
         "qty": str(s.qty),
+        "side": "buy",
         "type": "limit",
         "limit_price": str(s.debit_limit),
         "time_in_force": "day",
-        "legs": [
-            {
-                "symbol": s.long_symbol,
-                "ratio_qty": "1",
-                "side": "buy",
-                "position_intent": "buy_to_open",
-            },
-            {
-                "symbol": s.short_symbol,
-                "ratio_qty": "1",
-                "side": "sell",
-                "position_intent": "sell_to_open",
-            },
-        ],
+        "position_intent": "buy_to_open",
     }
 
 
-def _mleg_payload(thesis: Thesis) -> dict[str, Any]:
+def _single_option_payload(
+    thesis: Thesis,
+    *,
+    client_order_id: str,
+) -> dict[str, Any]:
     return {
-        **_mleg_intent(thesis),
-        "client_order_id": f"thesis-{thesis.id}-{uuid4().hex[:8]}",
+        **_single_option_intent(thesis),
+        "client_order_id": client_order_id,
     }
 
 
-def _mleg_evidence(thesis: Thesis) -> str:
+def _single_option_evidence(thesis: Thesis) -> str:
     public_intent = {
-        **_mleg_intent(thesis),
+        **_single_option_intent(thesis),
         "client_order_id": "<generated-at-submit>",
     }
     return (
         "DRY RUN — Alpaca MCP place_option_order "
         + json.dumps(public_intent, separators=(",", ":"), sort_keys=True)
     )
+
+
+def _ny_day() -> tuple[str, datetime, datetime]:
+    ny = ZoneInfo("America/New_York")
+    now = datetime.now(timezone.utc).astimezone(ny)
+    start = datetime.combine(now.date(), time.min, tzinfo=ny)
+    return (
+        now.date().isoformat(),
+        start.astimezone(timezone.utc),
+        (start + timedelta(days=1)).astimezone(timezone.utc),
+    )
+
+
+def _fill_is_thesis_opening(fill: dict[str, Any], ny_date: str) -> bool:
+    client_id = str(fill.get("client_order_id") or "")
+    if not client_id.startswith("thesis-"):
+        return False
+    raw = fill.get("transaction_time") or fill.get("date")
+    try:
+        at = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return at.astimezone(ZoneInfo("America/New_York")).date().isoformat() == ny_date
+
+
+def _daily_loss_state(account: Any) -> tuple[bool, str]:
+    try:
+        equity = float(account.equity)
+        reference = float(account.last_equity)
+    except (AttributeError, TypeError, ValueError):
+        return False, "current and start-of-day/last equity evidence unavailable"
+    if not all(math.isfinite(value) and value > 0 for value in (equity, reference)):
+        return False, "current and start-of-day/last equity evidence invalid"
+    pnl_pct = (equity - reference) / reference
+    return pnl_pct > -0.02, f"same-day P&L={pnl_pct:.2%} (must be above -2.00%)"
 
 
 def _mcp_account_readiness(result: McpToolResult) -> tuple[bool, str]:
@@ -258,12 +288,19 @@ async def _run_cycle_with_mcp(
     mcp_ok = account_mcp_ready and clock_mcp_ready
     market_open = market_open and mcp_ok
     tool_path = "mcp"
-    positions = client.positions()
+    positions_available = True
+    try:
+        positions = client.positions()
+    except Exception:
+        positions = []
+        positions_available = False
     performance = None
     fills: list[dict[str, Any]] = []
+    fills_available = False
     try:
         history = client.portfolio_history()
         fills = client.fill_activities()
+        fills_available = True
         performance = performance_snapshot(account, positions, history, fills)
         store.save_performance(performance)
         traces.append(
@@ -330,6 +367,29 @@ async def _run_cycle_with_mcp(
     )
     total_scout_duration_ms = _milliseconds(scout_started, scouted_at)
     candidate_comparison = compare_stock_candidates(scouting.leaderboard)
+    snapshots_by_symbol = {snap.symbol: snap for snap in snaps}
+    ranked_symbols = [
+        str(row["symbol"])
+        for row in sorted(
+            (
+                row
+                for row in scouting.leaderboard
+                if isinstance(row.get("stock_rank"), int)
+                and row.get("symbol") in snapshots_by_symbol
+            ),
+            key=lambda row: (row["stock_rank"], row["symbol"]),
+        )
+    ]
+    grok_candidates = [
+        snapshots_by_symbol[symbol]
+        for symbol in ranked_symbols[:SHORTLIST_LIMIT]
+    ]
+    if not grok_candidates:
+        grok_candidates = snaps[:SHORTLIST_LIMIT]
+    candidate_sides = {
+        snap.symbol: [Side.BULLISH.value, Side.BEARISH.value]
+        for snap in grok_candidates
+    }
     observed_symbols = {snap.symbol for snap in snaps}
     baseline_symbols = set(BASELINE_UNIVERSE) & set(scout_symbols)
     baseline_attempted_count = len(baseline_symbols)
@@ -401,13 +461,13 @@ async def _run_cycle_with_mcp(
     )
     llm_attempted = False
     llm_ok = True
-    if shortlist:
+    if grok_candidates:
         llm_attempted = True
         try:
             draft = await draft_thesis(
                 settings,
-                shortlist,
-                scouting.shortlist_sides,
+                grok_candidates,
+                candidate_sides,
                 mcp,
             )
             thesis = draft.thesis
@@ -438,13 +498,13 @@ async def _run_cycle_with_mcp(
             underlying=leader["symbol"] if leader else "SPY",
             side=Side.BULLISH,
             regime=leader["regime"] if leader else "unknown",
-            setup="No option-feasible candidate passed deterministic scouting.",
+            setup="No stock candidate was observed; Grok could not be invoked.",
             invalidation="n/a",
             horizon="14-45 DTE",
             expected_move_pct=0,
-            iv_note="No valid natural-debit vertical was available.",
+            iv_note="Required stock evidence was unavailable.",
             conviction=0.0,
-            notes="deterministic scout no_trade",
+            notes="deterministic observation failure",
             decision="no_trade",
         )
     thesis.snapshots = _snap_dicts(snaps)
@@ -572,10 +632,10 @@ async def _run_cycle_with_mcp(
         traces.append(
             _trace(
                 "Grok",
-                "bounded MCP tool thesis",
+                "bounded MCP tool single-option thesis",
                 ok=llm_ok,
                 status=(
-                    "Validated MCP-researched shortlist response"
+                    "Validated MCP-researched stock-candidate response"
                     if llm_ok
                     else "Provider output unavailable"
                 ),
@@ -624,7 +684,7 @@ async def _run_cycle_with_mcp(
         )
 
     try:
-        structure = build_debit_vertical(
+        structure = build_single_option(
             client,
             underlying=thesis.underlying,
             side=thesis.side,
@@ -635,7 +695,9 @@ async def _run_cycle_with_mcp(
         check_open(
             RiskSnapshot(
                 equity=float(account.equity),
-                open_theses=store.open_count(),
+                open_theses=(
+                    len(positions) if positions_available else store.open_count()
+                ),
                 debit_at_risk=store.debit_at_risk(),
             ),
             underlying=thesis.underlying,
@@ -645,14 +707,14 @@ async def _run_cycle_with_mcp(
         )
         gates.append(
             _gate(
-                "spread_and_risk",
+                "single_option_and_risk",
                 True,
-                f"{structure.long_symbol}/{structure.short_symbol} debit≤{structure.debit_limit} "
+                f"{structure.long_symbol} premium≤{structure.debit_limit} "
                 f"qty={structure.qty} max_loss=${structure.max_loss_usd:.0f}",
             )
         )
     except (SpreadError, RiskError) as exc:
-        gates.append(_gate("spread_and_risk", False, str(exc)))
+        gates.append(_gate("single_option_and_risk", False, str(exc)))
         thesis.status = ThesisStatus.REJECTED
         thesis.decision = "rejected"
         thesis.notes = str(exc)
@@ -665,7 +727,67 @@ async def _run_cycle_with_mcp(
             store, thesis, snaps, gates, traces, tool_path, performance
         )
 
-    if not market_open or not allow:
+    daily_loss_ok, daily_loss_detail = _daily_loss_state(account)
+    position_limit_ok = positions_available and len(positions) < 3
+    ny_date, ny_start, ny_end = _ny_day()
+    existing_reservation = store.opening_order_reservation(ny_date)
+    one_per_day_ok = existing_reservation is None
+    one_per_day_detail = (
+        "no durable opening-order reservation today"
+        if one_per_day_ok
+        else "durable opening-order slot already reserved today"
+    )
+    should_reconcile = (
+        allow
+        and market_open
+        and mcp_ok
+        and position_limit_ok
+        and daily_loss_ok
+        and one_per_day_ok
+    )
+    if should_reconcile:
+        try:
+            broker_orders = client.thesis_orders_for_ny_date(ny_start, ny_end)
+            if not fills_available:
+                raise RuntimeError("broker fill evidence unavailable")
+            broker_has_opening = bool(broker_orders) or any(
+                _fill_is_thesis_opening(fill, ny_date) for fill in fills
+            )
+            one_per_day_ok = not broker_has_opening
+            one_per_day_detail = (
+                "broker orders/fills and durable reservation show slot available"
+                if one_per_day_ok
+                else "broker-visible Thesis order/fill already exists today"
+            )
+        except Exception:
+            one_per_day_ok = False
+            one_per_day_detail = "broker same-day Thesis order/fill evidence unavailable"
+    gates.extend(
+        [
+            _gate(
+                "broker_position_limit",
+                position_limit_ok,
+                (
+                    f"{len(positions)} open broker positions (max 3 before entry)"
+                    if positions_available
+                    else "broker position evidence unavailable"
+                ),
+            ),
+            _gate(
+                "daily_loss_limit",
+                daily_loss_ok,
+                daily_loss_detail,
+            ),
+            _gate(
+                "one_opening_order_per_ny_day",
+                one_per_day_ok,
+                one_per_day_detail,
+            ),
+        ]
+    )
+    execution_safety_ok = position_limit_ok and daily_loss_ok and one_per_day_ok
+
+    if not market_open or not allow or (allow and not execution_safety_ok):
         thesis.status = ThesisStatus.DRAFT
         thesis.decision = "blocked"
         blocked_by = []
@@ -673,12 +795,18 @@ async def _run_cycle_with_mcp(
             blocked_by.append("MCP market gate closed or unavailable")
         if not allow:
             blocked_by.append("execution disabled")
+        if allow and not position_limit_ok:
+            blocked_by.append("broker position limit")
+        if allow and not daily_loss_ok:
+            blocked_by.append("same-day loss limit or evidence unavailable")
+        if allow and not one_per_day_ok:
+            blocked_by.append("one opening order per New York day")
         traces.append(
             _trace(
                 "Alpaca MCP",
                 "guarded order intent",
                 ok=True,
-                status=f"{_mleg_evidence(thesis)}; not submitted ({', '.join(blocked_by)})",
+                status=f"{_single_option_evidence(thesis)}; not submitted ({', '.join(blocked_by)})",
             )
         )
         thesis.monitoring = monitoring_snapshot(
@@ -690,7 +818,6 @@ async def _run_cycle_with_mcp(
             store, thesis, snaps, gates, traces, tool_path, performance
         )
 
-    payload = _mleg_payload(thesis)
     gates.append(
         _gate(
             "mcp_order_path",
@@ -723,11 +850,59 @@ async def _run_cycle_with_mcp(
             store, thesis, snaps, gates, traces, tool_path, performance
         )
 
+    client_order_id = f"thesis-{ny_date.replace('-', '')}-open-{thesis.id}"
+    reserved = store.reserve_opening_order(
+        ny_date=ny_date,
+        slot="opening-1",
+        thesis_id=thesis.id,
+        client_order_id=client_order_id,
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+    gates.append(
+        _gate(
+            "atomic_opening_order_reservation",
+            reserved,
+            (
+                f"reserved {ny_date}/opening-1"
+                if reserved
+                else f"{ny_date}/opening-1 was concurrently reserved"
+            ),
+        )
+    )
+    if not reserved:
+        thesis.status = ThesisStatus.DRAFT
+        thesis.decision = "blocked"
+        thesis.notes = "Atomic opening-order reservation was unavailable."
+        traces.append(
+            _trace(
+                "Alpaca MCP",
+                "guarded order intent",
+                ok=True,
+                status=f"{_single_option_evidence(thesis)}; not submitted (concurrent daily reservation)",
+            )
+        )
+        thesis.monitoring = monitoring_snapshot(
+            thesis, position_snapshots(positions), None, fills=fills
+        )
+        thesis.exit_status = thesis.monitoring.exit_status
+        thesis.exit_reason = thesis.monitoring.exit_reason
+        return _complete(
+            store, thesis, snaps, gates, traces, tool_path, performance
+        )
+
+    payload = _single_option_payload(
+        thesis,
+        client_order_id=client_order_id,
+    )
     try:
         posted = await mcp.place_option_order(payload)
         traces.extend(mcp.traces[mcp_trace_count:])
         mcp_trace_count = len(mcp.traces)
     except McpError:
+        store.mark_opening_order_reservation(
+            client_order_id=client_order_id,
+            state="dispatch_ambiguous",
+        )
         traces.extend(mcp.traces[mcp_trace_count:])
         mcp_trace_count = len(mcp.traces)
         detail = (
@@ -750,6 +925,10 @@ async def _run_cycle_with_mcp(
     submitted_order = posted.data if isinstance(posted.data, dict) else None
     order_id = submitted_order.get("id") if submitted_order else None
     if not order_id:
+        store.mark_opening_order_reservation(
+            client_order_id=client_order_id,
+            state="dispatch_ambiguous",
+        )
         detail = (
             "MCP response had no order id; outcome is ambiguous and will not be retried."
         )
@@ -772,6 +951,10 @@ async def _run_cycle_with_mcp(
             True,
             f"Alpaca MCP returned paper order {str(order_id)[:12]}…",
         )
+    )
+    store.mark_opening_order_reservation(
+        client_order_id=client_order_id,
+        state="submitted",
     )
 
     thesis.order_id = str(order_id)

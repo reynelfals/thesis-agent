@@ -20,6 +20,9 @@ class Settings:
     base_url = "https://paper-api.alpaca.markets"
     allow_execute = False
     demo_starting_equity = 100000.0
+    account_profile_label = "Development paper account"
+    api_key = "dashboard-key-must-not-leak"
+    secret_key = "dashboard-secret-must-not-leak"
 
     def assert_paper(self) -> None:
         return None
@@ -91,7 +94,13 @@ def test_first_snapshot_is_loading_and_refresh_uses_audit_calculations(tmp_path)
     assert result["status"] == "ready"
     assert result["performance"]["total_pl"] == 10
     assert result["readiness"]["account_suffix"] == "6789"
+    assert result["readiness"]["account_profile"] == "Development paper account"
     assert "123456789" not in str(result)
+    serialized = json.dumps(result)
+    assert "dashboard-key-must-not-leak" not in serialized
+    assert "dashboard-secret-must-not-leak" not in serialized
+    assert "APCA_API_KEY_ID" not in serialized
+    assert "APCA_API_SECRET_KEY" not in serialized
     assert client.fill_page_limits == [MAX_FILL_ACTIVITY_PAGES]
     assert store.performance_history() == []
 
@@ -252,6 +261,11 @@ def test_http_routes_static_assets_and_cycle_contract(tmp_path) -> None:
     assert "GROK PROPOSES" in brief.text
     assert "ALPACA PROVES" in brief.text
     assert "Paper trading only" in brief.text
+    assert "one long call (bullish) or long put (bearish)" in brief.text
+    assert "1% equity premium cap" in brief.text
+    assert "30-minute weekday analysis-only" in brief.text
+    assert "two-leg debit MLEG" not in brief.text
+    assert "≤2% equity" not in brief.text
     assert "http://" not in brief.text
     assert "https://" not in brief.text
     assert favicon.status_code == 204

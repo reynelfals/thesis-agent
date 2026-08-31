@@ -13,9 +13,11 @@ from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import (
     AssetStatus,
     ContractType,
+    QueryOrderStatus,
 )
 from alpaca.trading.requests import (
     GetOrderByIdRequest,
+    GetOrdersRequest,
     GetOptionContractsRequest,
     GetPortfolioHistoryRequest,
 )
@@ -131,6 +133,29 @@ class PaperClient:
             order_id,
             GetOrderByIdRequest(nested=True),
         )
+
+    def thesis_orders_for_ny_date(self, start: datetime, end: datetime):
+        """Return a complete broker-visible set of Thesis orders for one NY day."""
+        orders = list(
+            self.trading.get_orders(
+                GetOrdersRequest(
+                    status=QueryOrderStatus.ALL,
+                    limit=500,
+                    after=start,
+                    until=end,
+                    nested=True,
+                )
+            )
+        )
+        if len(orders) >= 500:
+            raise RuntimeError(
+                "same-day broker order evidence may be truncated at 500 orders"
+            )
+        return [
+            order
+            for order in orders
+            if str(getattr(order, "client_order_id", "")).startswith("thesis-")
+        ]
 
     def portfolio_history(self):
         return self.trading.get_portfolio_history(

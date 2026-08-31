@@ -6,7 +6,18 @@ Built for the [Alpaca AI Trading Agents Hackathon](https://lablab.ai/ai-hackatho
 
 **Stack:** Official Alpaca MCP server + Alpaca APIs (`alpaca-py` for deterministic
 reads) + Grok + FastAPI.
-**Structure:** defined-risk debit verticals (Level 3 multi-leg). No 0DTE, no naked short.
+**Current demo structure:** one long call (bullish) or long put (bearish), with
+14–45 DTE and premium paid as max loss. No 0DTE or short option legs.
+
+**Scientific status:** no repeatable positive trading edge has been validated.
+The [pre-registered research protocol](research/README.md) rejects the claim
+because the available Alpaca archive has bars and trades but not the historical
+OPRA NBBO pairs required for defensible multi-leg fills, and Thesis has no
+historical archive of contemporaneously recorded Grok decisions. See the
+[current evidence report](research/edge-study-report.md) and
+[frozen strategy specification](research/strategy-spec-v1.json). That frozen v1
+vertical study is intentionally separate from the
+[current paper-demo v2 strategy](research/current-demo-strategy-v2.json).
 
 ## Setup
 
@@ -15,11 +26,15 @@ reads) + Grok + FastAPI.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
-cp .env.example .env   # paper keys only
+cp .env.example .env   # separate development and judge paper keys only
 python -m thesis.smoke
 ```
 
-`.env` must point at `https://paper-api.alpaca.markets`. The process refuses to start otherwise.
+`THESIS_ACCOUNT_PROFILE` is mandatory: `development` uses only the `DEV_APCA_*`
+keys, while `judge` uses only the `APCA_*` keys. There is no credential fallback.
+`APCA_API_BASE_URL` must point at `https://paper-api.alpaca.markets`; the process
+refuses to start otherwise. Keep development and judge data in
+`data/development-thesis.sqlite` and `data/judge-thesis.sqlite`, respectively.
 
 ## Agent cycle (not the public dashboard)
 
@@ -29,13 +44,16 @@ Dashboard is **read-only**. The cycle runs in Shell:
 PYTHONPATH=. python scripts/run_cycle.py
 ```
 
-Grok-4.6 writes the thesis. Code picks the debit vertical and applies risk gates. **No order** unless `THESIS_ALLOW_EXECUTE=1` **and** the US market is open **and** conviction ≥ 0.35.
+Grok-4.6 chooses a stock-ranked underlying and bullish/bearish direction. Code
+selects one liquid long call/put and applies deterministic risk gates, including a
+1% equity premium cap. **No order** unless `THESIS_ALLOW_EXECUTE=1`, the US market
+is open, conviction is valid and ≥ 0.35, and all execution evidence is available.
 
-Before Grok sees a candidate, deterministic liquidity gates require 20-day average
-stock dollar volume of at least `THESIS_MIN_AVG_DOLLAR_VOLUME` (default $50M) and
-two-sided quotes on both representative option legs no wider than
-`THESIS_MAX_OPTION_BID_ASK_PCT` (default 25% of midpoint). Final spread construction
-refreshes and rechecks both gates immediately before sizing.
+Stock ranking is deterministic; Grok is still called when the legacy debit-vertical
+probe finds no feasible spread. Final single-option construction requires 20-day
+average stock dollar volume of at least `THESIS_MIN_AVG_DOLLAR_VOLUME` (default
+$50M), plus a fresh two-sided option quote no wider than
+`THESIS_MAX_OPTION_BID_ASK_PCT` (default 25% of midpoint).
 
 ### Scout universe rollout
 
@@ -86,22 +104,27 @@ traces continue to compare actual full-scout duration with the latest stored
 baseline cycle and record same-cycle observation timing, success rates, fixed stage
 targets, and top-five score delta/overlap. If no measured baseline is available, the
 trace marks the comparison not ready instead of estimating one. Only stock data is
-used to rank the full universe; option-chain work remains limited to the top five,
-and Grok still receives at most three option-feasible candidates.
+used to rank the full universe; legacy option-chain probes remain limited to the top
+five, and Grok receives at most three stock-ranked candidates even when no legacy
+vertical is feasible.
 
 ### Alpaca MCP trust boundary
 
 Grok sees only the filtered, read-only official Alpaca MCP tools
 `get_stock_snapshot` and `get_option_chain`, restricted to the deterministic
-shortlist (at most three option-feasible candidates). The application harness—not
+shortlist (at most three stock-ranked candidates). The application harness—not
 Grok—owns account, clock, and order-status calls. Grok finishes research by calling
-the local `request_defined_risk_spread` request tool; that is not an order.
+the local `request_single_long_option` directional request tool; that is not an
+order. Older audit records may show the compatibility name
+`request_defined_risk_spread`; for current demo v2 it maps only to the same
+directional thesis request and does not authorize a vertical or broker write.
 
-Deterministic code then rebuilds the contracts, refreshes quotes, and validates
-liquidity, 14–45 DTE, sizing, and maximum risk. `place_option_order` is the only
-write path. There is no CLI or SDK write fallback. A timeout, malformed response,
-missing order ID, or otherwise ambiguous submission is terminal and is never
-retried, preventing unattributed or duplicate orders.
+Deterministic code then selects one long call or put, refreshes its quote, and
+validates liquidity, 14–45 DTE, the 1% equity premium cap, and maximum loss equal to
+premium paid. `place_option_order` is the only write path and submits a simple
+single-leg limit/day buy-to-open order. There is no CLI or SDK write fallback. A
+timeout, malformed response, missing order ID, or otherwise ambiguous submission
+is terminal and is never retried, preventing unattributed or duplicate orders.
 
 Paper trading and options level 3 are mandatory. SDK reads may still support
 deterministic scouting, monitoring, and performance reconciliation. Historical CLI
@@ -117,7 +140,7 @@ screen. The dashboard shows:
 
 - a chronological decision timeline: thesis, invalidation, every deterministic risk
   gate, sanitized MCP/API trace, order state, fills, and the reason a trade was skipped;
-- thesis-linked position monitoring with current spread legs, unrealized P&L, and an
+- thesis-linked position monitoring with current option contracts, unrealized P&L, and an
   explicit exit state (`monitoring`, `not_started`, `not_applicable`, or `flat_unlinked`);
 - realized P&L calculated FIFO from Alpaca `FILL` activities, live unrealized P&L,
   current equity versus the Alpaca history baseline, a reconciliation delta, and
@@ -129,10 +152,22 @@ The dashboard never submits, replaces, cancels, or closes an order. It exposes o
 `GET /api/dashboard` and `GET /api/health`; all returned evidence is allow-listed and
 sanitized.
 
+The production process also supervises a durable **analysis-only** worker. On
+weekdays it considers slots at 09:35, 10:05, and every 30 minutes through 15:35
+America/New_York. Each slot is atomically claimed in SQLite and always calls the
+cycle with `execute=False`; the worker refuses execution-enabled configuration.
+An authoritative paper-SDK clock read skips closed-market and holiday slots
+before analysis. Each analysis runs in an isolated process with a 14-minute
+deadline, so a stalled cycle is recorded as a terminal timeout without blocking
+later slots. It does not backfill missed slots. A **republish is required** for
+this worker change to take effect, and execution remains disabled after
+republishing.
+
 Run it locally from this directory:
 
 ```bash
-PYTHONPATH=. uvicorn thesis.web.app:app --host 0.0.0.0 --port 5000
+THESIS_ACCOUNT_PROFILE=development THESIS_DB=data/development-thesis.sqlite \
+  PYTHONPATH=. uvicorn thesis.web.app:app --host 0.0.0.0 --port 5000
 ```
 
 ## Submission package
@@ -144,6 +179,7 @@ PYTHONPATH=. uvicorn thesis.web.app:app --host 0.0.0.0 --port 5000
 - [Demo script](DEMO_SCRIPT.md)
 - [Final submission and Monday execution checklist](SUBMISSION_CHECKLIST.md)
 - [Optional build-in-public posts](SOCIAL_POSTS.md)
+- [Scientific edge study](research/edge-study-report.md)
 
 **Live audit console:** <https://thesis-agent.replit.app>
 
@@ -180,10 +216,14 @@ history will no longer match the audit story.
 
    | Name | Value |
    |---|---|
+   | `THESIS_ACCOUNT_PROFILE` | `judge` |
    | `APCA_API_KEY_ID` | paper key |
    | `APCA_API_SECRET_KEY` | paper secret |
    | `APCA_API_BASE_URL` | `https://paper-api.alpaca.markets` |
    | `XAI_API_KEY` | Grok thesis generation |
+
+   Production launchers also pin `THESIS_DB=data/judge-thesis.sqlite`; development
+   uses the separate `DEV_APCA_*` credentials and development database.
 
 4. Run. Replit launches the FastAPI dashboard on port 5000. It is **read-only**
    (decision audit + orders + fills + positions + P&L) and does not place orders.

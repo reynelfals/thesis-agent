@@ -29,11 +29,12 @@ The rendered submission video uses eight narrated scenes.
    history. Judges can inspect the thesis, every gate, sanitized MCP trace, exact
    multi-leg intent, broker status, realized and unrealized P&L, reconciliation,
    and the equity curve from one screen.
-7. **Readiness** — The final demo uses a fresh $100,000 paper account with
-   options level 3. A single production worker is armed for Monday at 9:35 AM
-   EDT, while the dashboard remains unable to write. No fill is claimed until the
-   submitted paper account and broker evidence prove it. A safe refusal is still
-   a valid autonomous result.
+7. **Paper-market result** — The Monday autonomous cycle reached the fresh
+   $100,000 paper account and official Alpaca MCP with options level 3. The
+   deterministic scout ranked the full universe and probed five option chains,
+   but no option-feasible candidate passed. Thesis recorded a no-trade instead of
+   forcing a spread. No order was submitted, there are zero fills and zero P&L,
+   and the public dashboard remains read-only. A safe refusal is evidence.
 8. **Close** — Thesis is built around evidence over assertion. Grok proposes.
    Deterministic controls prove. Alpaca executes in paper. Every trade—and every
    refusal to trade—is explainable from the public audit console. Thesis is a

@@ -8,6 +8,18 @@ from dotenv import load_dotenv
 
 PAPER_BASE = "https://paper-api.alpaca.markets"
 LIVE_BASE = "https://api.alpaca.markets"
+ACCOUNT_PROFILES = {
+    "development": (
+        "DEV_APCA_API_KEY_ID",
+        "DEV_APCA_API_SECRET_KEY",
+        "Development paper account",
+    ),
+    "judge": (
+        "APCA_API_KEY_ID",
+        "APCA_API_SECRET_KEY",
+        "Judge paper account",
+    ),
+}
 DEFAULT_MIN_AVG_DOLLAR_VOLUME = 50_000_000.0
 DEFAULT_MAX_OPTION_BID_ASK_PCT = 25.0
 DEFAULT_SCOUT_UNIVERSE = "expanded"
@@ -25,6 +37,26 @@ def _require(name: str) -> str:
     if not value:
         raise ConfigError(f"missing {name} in environment / .env")
     return value
+
+
+def account_profile() -> str:
+    value = _require("THESIS_ACCOUNT_PROFILE").lower()
+    if value not in ACCOUNT_PROFILES:
+        choices = ", ".join(ACCOUNT_PROFILES)
+        raise ConfigError(f"THESIS_ACCOUNT_PROFILE must be one of: {choices}")
+    return value
+
+
+def alpaca_credential_names(profile: str | None = None) -> tuple[str, str]:
+    selected = profile or account_profile()
+    try:
+        key_name, secret_name, _ = ACCOUNT_PROFILES[selected]
+    except KeyError as exc:
+        choices = ", ".join(ACCOUNT_PROFILES)
+        raise ConfigError(
+            f"THESIS_ACCOUNT_PROFILE must be one of: {choices}"
+        ) from exc
+    return key_name, secret_name
 
 
 def _number(
@@ -54,6 +86,8 @@ def _choice(name: str, default: str, allowed: set[str]) -> str:
 
 
 class Settings:
+    account_profile: str
+    account_profile_label: str
     api_key: str
     secret_key: str
     base_url: str
@@ -67,15 +101,34 @@ class Settings:
     scout_universe: str
 
     def __init__(self) -> None:
-        self.api_key = _require("APCA_API_KEY_ID")
-        self.secret_key = _require("APCA_API_SECRET_KEY")
+        self.account_profile = account_profile()
+        key_name, secret_name = alpaca_credential_names(self.account_profile)
+        self.api_key = _require(key_name)
+        self.secret_key = _require(secret_name)
+        self.account_profile_label = ACCOUNT_PROFILES[self.account_profile][2]
         raw = os.getenv("APCA_API_BASE_URL", PAPER_BASE).strip().rstrip("/")
         if raw.endswith("/v2"):
             raw = raw[: -len("/v2")]
         self.base_url = raw
         self.xai_api_key = os.getenv("XAI_API_KEY", "").strip()
         self.grok_model = os.getenv("GROK_MODEL", "grok-4.6").strip() or "grok-4.6"
-        self.db_path = Path(os.getenv("THESIS_DB", ROOT / "data" / "thesis.sqlite"))
+        allowed_db = (
+            ROOT / "data" / f"{self.account_profile}-thesis.sqlite"
+        ).resolve()
+        configured_db = os.getenv("THESIS_DB")
+        if configured_db is None:
+            resolved_db = allowed_db
+        else:
+            candidate = Path(configured_db).expanduser()
+            if not candidate.is_absolute():
+                candidate = ROOT / candidate
+            resolved_db = candidate.resolve()
+            if resolved_db != allowed_db:
+                raise ConfigError(
+                    "THESIS_DB must resolve to "
+                    f"{allowed_db} for the {self.account_profile} profile"
+                )
+        self.db_path = resolved_db
         self.allow_execute = os.getenv("THESIS_ALLOW_EXECUTE", "").strip().lower() in {
             "1",
             "true",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -16,24 +17,26 @@ from thesis.tools.mcp import AlpacaMcpSession, McpError
 
 MAX_AGENT_ROUNDS = 6
 MAX_RESEARCH_CALLS = 4
-REQUEST_TRADE_TOOL = "request_defined_risk_spread"
+REQUEST_TRADE_TOOL = "request_single_long_option"
 
 SYSTEM = """You are Thesis, an autonomous but tightly constrained options agent.
-Use the supplied Alpaca MCP research tools to verify current evidence before making
-a decision. You must make at least one MCP research call. You may inspect only the
-shortlisted symbols and directions enforced by the tool harness.
+Use the supplied Alpaca MCP research tools to verify current evidence before choosing
+one trade. You must make at least one MCP research call. You may inspect only the
+deterministically stock-ranked candidates enforced by the tool harness.
 For get_option_chain, always set type="call" when researching a bullish thesis or
 type="put" when researching a bearish thesis.
 You have at most four research calls. Do not repeat a symbol/type query. After at
-most four calls, stop researching and immediately request a spread or abstain.
+most four calls, stop researching and immediately request a trade.
 
-When your research is complete, call request_defined_risk_spread with exactly one
-testable directional thesis, or with conviction 0 when no trade is justified.
+When your research is complete, call request_single_long_option with exactly one
+testable directional thesis. You must choose bullish or bearish and one supplied
+underlying; there is no strategic no-trade response.
 That call requests a trade; deterministic code independently chooses the contracts,
 sizes risk, refreshes quotes, and may reject the request. You cannot submit, cancel,
 replace, exercise, or close broker orders directly.
 
-Prefer 14-45 DTE defined-risk debit verticals. No 0DTE, naked shorts, or crypto.
+The deterministic harness will buy one call for bullish or one put for bearish,
+14-45 DTE, near 25 DTE. No spreads, short options, 0DTE, or crypto.
 Never invent prices, fills, account state, or tool results.
 """
 
@@ -42,7 +45,7 @@ REQUEST_TRADE_SCHEMA: dict[str, Any] = {
     "function": {
         "name": REQUEST_TRADE_TOOL,
         "description": (
-            "Request one defined-risk debit spread for deterministic validation. "
+            "Request one single long option for deterministic validation. "
             "This does not bypass the risk or execution harness."
         ),
         "parameters": {
@@ -57,7 +60,11 @@ REQUEST_TRADE_SCHEMA: dict[str, Any] = {
                 "horizon": {"type": "string"},
                 "expected_move_pct": {"type": "number"},
                 "iv_note": {"type": "string"},
-                "conviction": {"type": "number", "minimum": 0, "maximum": 1},
+                "conviction": {
+                    "type": "number",
+                    "minimum": MIN_CONVICTION,
+                    "maximum": 1,
+                },
             },
             "required": [
                 "underlying",
@@ -168,8 +175,8 @@ def _thesis_from_request(
     if side.value not in feasible_sides.get(underlying, []):
         thesis = _no_trade(
             snaps,
-            setup="Agent requested a side outside the feasibility-probed shortlist.",
-            notes="rejected side outside feasible_sides",
+            setup="Agent requested a side outside the deterministic candidate contract.",
+            notes="rejected side outside allowed candidate sides",
         )
         thesis.underlying = underlying
         thesis.side = side
@@ -184,7 +191,16 @@ def _thesis_from_request(
             setup="Agent returned non-numeric conviction or expected move.",
             notes="rejected malformed numeric fields",
         )
-    conviction = max(0.0, min(1.0, conviction))
+    if (
+        not math.isfinite(conviction)
+        or not math.isfinite(expected_move)
+        or not MIN_CONVICTION <= conviction <= 1.0
+    ):
+        return _no_trade(
+            snaps,
+            setup="Agent returned invalid or below-threshold numeric fields.",
+            notes="rejected invalid or low conviction",
+        )
     return Thesis(
         underlying=underlying,
         side=side,
@@ -336,7 +352,7 @@ async def draft_thesis(
                         ok=thesis.conviction > 0,
                         status=(
                             f"Requested {thesis.underlying} {thesis.side.value} "
-                            f"defined-risk spread; conviction={thesis.conviction:.2f}"
+                            f"single long option; conviction={thesis.conviction:.2f}"
                             if thesis.conviction > 0
                             else "Agent requested no trade or violated the shortlist contract"
                         ),
@@ -366,8 +382,7 @@ async def draft_thesis(
                                 "accepted": False,
                                 "reason": (
                                     "Research budget exhausted. Call "
-                                    f"{REQUEST_TRADE_TOOL} now with a trade or "
-                                    "conviction 0."
+                                    f"{REQUEST_TRADE_TOOL} now with one trade."
                                 ),
                             }
                         ),

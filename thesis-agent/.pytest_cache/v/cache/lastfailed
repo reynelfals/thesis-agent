@@ -1,0 +1,20 @@
+{
+  "tests/test_cycle_cli.py::test_disabled_execution_records_exact_cli_intent": true,
+  "tests/test_cycle_cli.py::test_execute_argument_cannot_override_disabled_setting": true,
+  "tests/test_cycle_cli.py::test_expanded_scout_profile_selects_full_approved_universe": true,
+  "tests/test_cycle_cli.py::test_cli_submission_failure_never_falls_back_to_sdk": true,
+  "tests/test_cycle_cli.py::test_successful_order_is_attributed_to_cli": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed0-clock_parsed0]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed1-clock_parsed1]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed2-clock_parsed2]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed3-clock_parsed3]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed4-clock_parsed4]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed5-clock_parsed5]": true,
+  "tests/test_cycle_cli.py::test_invalid_or_disagreeing_cli_state_fails_closed[account_parsed6-clock_parsed6]": true,
+  "tests/test_cycle_cli.py::test_broker_exception_text_is_not_persisted": true,
+  "tests/test_cycle_cli.py::test_order_refresh_exception_text_is_not_persisted": true,
+  "tests/test_cycle_cli.py::test_no_feasible_scout_skips_llm_spread_and_order": true,
+  "tests/test_cycle_cli.py::test_all_observations_fail_skips_llm_spread_and_order": true,
+  "tests/test_cycle_cli.py::test_llm_exception_is_sanitized_and_stops_before_spread": true,
+  "tests/test_research_spec.py::test_frozen_strategy_matches_current_runtime": true
+}

@@ -24,7 +24,7 @@
     const p=panel("Readiness ledger","A startup claim is only as strong as its proof.");
     const r=d.readiness;
     if(!r){p.append(empty("Readiness evidence has not been published yet."));return p}
-    const meta=$("div","small",`Account ••••${r.account_suffix||"—"} · ${r.account_phase||"unknown"} · market ${r.market_open?"open":"closed"}`); p.querySelector(".head").append(status(r.ready?"ready":"attention"));p.append(meta);
+    const meta=$("div","small",`${r.account_profile||"Paper account"} · Account ••••${r.account_suffix||"—"} · ${r.account_phase||"unknown"} · market ${r.market_open?"open":"closed"}`); p.querySelector(".head").append(status(r.ready?"ready":"attention"));p.append(meta);
     const list=$("ul","checks");(r.checks||[]).forEach(x=>{const li=$("li");li.append(status(x.status),$("span","",x.label||"unnamed check"),$("span","evidence",x.evidence||"No evidence"));list.append(li)});p.append(list);return p;
   }
   function performance(d){

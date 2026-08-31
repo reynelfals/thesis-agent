@@ -1,0 +1,52 @@
+{
+  "schema_version": "thesis-current-demo-strategy-v2",
+  "strategy_id": "thesis-grok-single-long-option-demo-v2",
+  "status": {
+    "purpose": "current indicative paper-demo runtime specification",
+    "not_part_of_v1_evidence": true,
+    "positive_edge_claim": false,
+    "limitations": [
+      "Paper and indicative quotes may not represent executable live fills.",
+      "No repeatable positive trading edge has been established.",
+      "This specification is not accepted by the frozen v1 research evaluator."
+    ]
+  },
+  "analysis": {
+    "grok_invoked_for_each_otherwise_healthy_cycle": true,
+    "grok_selects_underlying_and_direction": [
+      "bullish",
+      "bearish"
+    ],
+    "supported_analysis_interval_minutes": 30
+  },
+  "structure": {
+    "bullish": "buy one long call",
+    "bearish": "buy one long put",
+    "dte_min": 14,
+    "dte_max": 45,
+    "target_dte": 25,
+    "selection": "near ATM, moving farther OTM only as needed for the premium cap",
+    "fresh_two_sided_quote_required": true,
+    "short_option_legs": false
+  },
+  "risk": {
+    "per_entry_premium_cap_equity_pct": 1.0,
+    "max_loss": "premium paid",
+    "max_broker_positions_before_entry": 2,
+    "max_new_opening_orders_per_new_york_day": 1,
+    "same_day_loss_block_pct": -2.0
+  },
+  "execution": {
+    "environment": "Alpaca paper only",
+    "submission": "Alpaca MCP single-leg limit/day/buy_to_open",
+    "execute_false": "guarded intent only; submission impossible",
+    "ambiguous_dispatch": "terminal, retained reservation, no retry"
+  },
+  "runtime_source_fingerprints": {
+    "thesis/cycle.py": "288fe8e17c3d15beab3cbcf2246d09cf51701ff19a3fcd631c49c803f4ed3d48",
+    "thesis/llm.py": "8fdb5855fb29320e2914514bc9dcb582a1263eef1eecab5ca0410fb98e020508",
+    "thesis/single_option.py": "74bbfffa6162b23c1539dea1998163c5f03e8434ff162dc7faea5de57b6d51ac",
+    "thesis/risk.py": "f4c3d14f001a5d6c8058c4d314228b5d5d092ddc2e3c699d75d8af1fcbcfec03",
+    "thesis/tools/mcp.py": "82fd5fa9d0c4d8a92dedfdb60302c3b33891d3bd5f7699a9cae768a633b831c5"
+  }
+}

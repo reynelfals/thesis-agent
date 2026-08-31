@@ -7,7 +7,8 @@
 
 - [x] Public GitHub repository: <https://github.com/reynelfals/thesis-agent>
 - [x] Published application URL: <https://thesis-agent.replit.app>
-- [x] Narrated MP4 at `submission_assets/thesis-demo.mp4`
+- [x] 16:9 cover image at `submission_assets/submission-brief.jpg`
+- [x] 3:30 narrated MP4 at `submission_assets/thesis-demo.mp4`
 - [x] Direct video URL:
   <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
 - [x] Dedicated PDF presentation at `submission_assets/thesis-slides.pdf`
@@ -19,8 +20,10 @@
 - [x] Competition account starting balance set to exactly $100,000
 - [x] Options trading level 3
 - [ ] Full Alpaca paper account ID entered in lablab.ai’s private submission field
-- [ ] Trading API, options strategy, and official Alpaca MCP path demonstrated
-- [ ] Current P&L and trading activity visible from the submitted account
+- [x] Trading API, defined-risk options strategy, and official Alpaca MCP path
+  demonstrated
+- [x] Current P&L and autonomous no-trade activity visible from the submitted
+  account
 - [ ] Up to five optional X/LinkedIn build-in-public links
 
 ## Before publishing
@@ -31,40 +34,27 @@ PYTHONPATH=. pytest -q
 PYTHONPATH=. python -m thesis.smoke
 ```
 
-- [ ] Dashboard loads without a blank screen
-- [ ] `/api/health` reports ready
-- [ ] All displayed account identifiers remain masked
-- [ ] Repository contains no `.env`, keys, raw broker responses, or screenshots
+- [x] Dashboard loads without a blank screen
+- [x] `/api/health` reports ready
+- [x] All displayed account identifiers remain masked
+- [x] Repository contains no `.env`, keys, raw broker responses, or screenshots
   containing credentials
-- [ ] `THESIS_ALLOW_EXECUTE=0` for normal dashboard hosting
+- [x] `THESIS_ALLOW_EXECUTE=0` for normal dashboard hosting
 
-## Automatic Monday one-shot MCP order capture
+## Monday one-shot MCP result
 
-The published VM's dedicated scheduler subprocess is armed for **9:35 AM EDT on
-Monday, August 31, 2026**. It enables execution only inside that worker process;
-the dashboard subprocess remains read-only. The development scheduler must stay
-stopped so there is only one execution worker.
+On **Monday, August 31, 2026**, the published worker completed one autonomous
+paper-market cycle. The public audit console records a **NO_TRADE** result after
+paper endpoint, account, options level, official Alpaca MCP discovery, MCP account
+and clock reads, market-open, and execution-authorization checks. Deterministic
+scouting ranked the universe and probed five option chains, but no
+option-feasible candidate passed and conviction remained below the hard minimum.
 
-1. Before Monday, confirm the production log reports `state=waiting`,
-   `outcome=armed`, and the correct target time.
-2. Leave the dashboard workflow running normally with execution disabled. Do not
-   set `THESIS_ALLOW_EXECUTE=1` globally.
-3. At 9:35 AM EDT, the separate worker atomically claims the fixed run ID and
-   starts one fresh cycle. A 15-minute grace window allows minor infrastructure
-   delay; after 9:50 AM EDT an unclaimed run is permanently recorded as skipped.
-4. The worker exits after a completed, failed, or skipped attempt. Any restart
-   after the claim is a no-op, including after an ambiguous submission.
-5. After the cycle, inspect the dashboard and worker result:
-   - `completed` with `submitted`, `blocked`, `rejected`, or `no_trade`
-   - `failed` when configuration or cycle execution failed after the claim
-   - `skipped` when the authorized window expired
-   - `already_claimed` when a duplicate worker start was safely ignored
-6. If an order was submitted, wait for the dashboard refresh and capture:
-   - the single `place_option_order` dispatch
-   - returned MCP paper order ID
-   - broker status and fills
-   - linked position/monitoring state
-   - updated P&L and equity curve
+- No broker order was submitted.
+- The fill ledger remains at zero and the account remains at the fresh $100,000
+  baseline with zero realized or unrealized P&L.
+- The result is an auditable safe refusal, not a failed demo or a fabricated fill.
+- The dashboard subprocess remains read-only with execution disabled.
 
 If no order qualifies, keep the refusal as evidence. Do not lower conviction,
 change risk limits, fabricate quotes, substitute a hand-built order, or launch
@@ -84,10 +74,18 @@ may remain readable.
 - **Project name:** Thesis
 - **Tagline:** Propose. Prove. Execute.
 - **Category:** Options Alpha Agents
+- **Cover image:** `submission_assets/submission-brief.jpg`
+- **Short description:** Thesis is an autonomous options agent where Grok
+  proposes a falsifiable thesis, deterministic code proves bounded risk, and
+  Alpaca paper infrastructure executes—or safely refuses.
+- **Long description:** Paste `SUBMISSION.md` from “The problem” through “Why it
+  is different,” including the disclaimer.
+- **Technology tags:** Grok 4.6, xAI API, official Alpaca MCP server, Alpaca
+  Trading API, Alpaca Market Data API, Python, FastAPI, SQLite, Replit
 - **Repository:** <https://github.com/reynelfals/thesis-agent>
 - **App URL:** <https://thesis-agent.replit.app>
 - **Video:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
-- **Slides:** `submission_assets/thesis-slides.pdf`
+- **Slides:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-slides.pdf>
 - **Paper account ID:** `[ENTER IN PRIVATE FORM — DO NOT COMMIT]`
 - **Write-up:** Paste `SUBMISSION.md`
 - **Social links:** Add up to five approved posts from `SOCIAL_POSTS.md`

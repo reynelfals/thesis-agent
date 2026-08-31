@@ -1,4 +1,4 @@
-# Thesis demo script — 2 minutes 30 seconds
+# Thesis demo script — 3 minutes 30 seconds
 
 **Rendered video:** [`submission_assets/thesis-demo.mp4`](submission_assets/thesis-demo.mp4)
 **Slide presentation:** [`submission_assets/thesis-slides.pdf`](submission_assets/thesis-slides.pdf)
@@ -11,13 +11,15 @@
 - Keep the full paper account ID, keys, terminal environment, and raw broker
   responses out of frame.
 - Use the fresh $100,000 competition paper account.
-- The packaged video truthfully shows pre-cycle readiness. After Monday, replace
-  only the result scene if broker evidence exists. A blocked/no-trade record is
-  still truthful evidence; never force a setup.
+- The packaged video truthfully shows the Monday no-trade result: paper-account
+  and official MCP checks passed, but deterministic scouting found no
+  option-feasible candidate. No broker order or fill is claimed.
+- Replace a result scene only when the submitted paper account and broker ledger
+  prove a different outcome. Never force a setup.
 
 ## Shot list and narration
 
-### 0:00–0:15 — Hook
+### 0:00–0:18 — Hook
 
 **Screen:** Dashboard hero and readiness ledger.
 
@@ -25,7 +27,7 @@
 > the opposite: the model may propose, but it cannot execute until deterministic
 > code proves the trade is bounded, attributable, and allowed.
 
-### 0:15–0:40 — The autonomous loop
+### 0:18–1:04 — The autonomous loop
 
 **Screen:** Expand a decision record and show the Grok thesis.
 
@@ -35,7 +37,7 @@
 > `get_option_chain` tools scoped to the deterministic shortlist. The application
 > harness owns account, clock, and order-status calls.
 
-### 0:40–1:05 — Deterministic options and risk
+### 1:04–1:36 — Deterministic options and risk
 
 **Screen:** Show the spread and gate evidence.
 
@@ -45,7 +47,7 @@
 > per-trade risk, six-percent aggregate risk, position limits, paper-only endpoint,
 > mandatory options level 3, market hours, and explicit execution enablement.
 
-### 1:05–1:35 — Official Alpaca MCP proof
+### 1:36–2:02 — Official Alpaca MCP proof
 
 **Screen:** Tool trace and order-intent evidence.
 
@@ -62,7 +64,7 @@ broker status; show a fill only if broker evidence exists.
 > This cycle correctly refused to trade. The exact two-leg payload is still visible,
 > along with the failed gate and the reason no broker order was submitted.
 
-### 1:35–2:05 — Monitoring and performance
+### 2:02–3:06 — Audit, monitoring, and the Monday result
 
 **Screen:** Position monitoring, fill ledger, P&L, and equity curve.
 
@@ -72,7 +74,12 @@ broker status; show a fill only if broker evidence exists.
 > exists. SDK reads may support this monitoring and performance view. Historical
 > CLI rows remain readable; new cycles record `tool_path=mcp` and no CLI commands.
 
-### 2:05–2:30 — Close
+> The Monday autonomous cycle reached the paper account and official MCP, then
+> refused to trade because no option-feasible candidate passed deterministic
+> scouting. No order was submitted, there are zero fills, and the account remains
+> at its fresh one-hundred-thousand-dollar baseline. A safe refusal is evidence.
+
+### 3:06–3:30 — Close
 
 **Screen:** Return to the hero, keeping evidence visible below.
 

@@ -31,10 +31,10 @@ class Structure(BaseModel):
     kind: str = "debit_vertical"
     underlying: str
     long_symbol: str
-    short_symbol: str
+    short_symbol: str | None = None
     expiration: str
     long_strike: float
-    short_strike: float
+    short_strike: float | None = None
     dte: int
     debit_limit: float
     qty: int

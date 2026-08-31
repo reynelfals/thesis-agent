@@ -172,6 +172,7 @@ def test_expanded_allowlist_is_sector_balanced_and_keeps_baseline_prefix() -> No
 def test_scout_universe_setting_accepts_only_documented_profiles(
     monkeypatch,
 ) -> None:
+    monkeypatch.setenv("THESIS_ACCOUNT_PROFILE", "judge")
     monkeypatch.setenv("APCA_API_KEY_ID", "paper-key")
     monkeypatch.setenv("APCA_API_SECRET_KEY", "paper-secret")
     monkeypatch.delenv("THESIS_SCOUT_UNIVERSE", raising=False)

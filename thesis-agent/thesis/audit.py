@@ -290,8 +290,12 @@ def monitoring_snapshot(
     expected_symbols = set()
     if thesis.structure:
         expected_symbols = {
-            thesis.structure.long_symbol,
-            thesis.structure.short_symbol,
+            symbol
+            for symbol in (
+                thesis.structure.long_symbol,
+                thesis.structure.short_symbol,
+            )
+            if symbol
         }
     symbol_positions = [
         position

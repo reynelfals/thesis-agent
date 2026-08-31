@@ -30,12 +30,28 @@ shutdown() {
 
 trap shutdown EXIT HUP INT TERM
 
-THESIS_ALLOW_EXECUTE=1 python scripts/run_scheduled_cycle.py &
+THESIS_ACCOUNT_PROFILE=judge \
+THESIS_DB=data/judge-thesis.sqlite \
+THESIS_ALLOW_EXECUTE=0 \
+python scripts/run_recurring_analysis.py &
 worker_pid=$!
 
-THESIS_ALLOW_EXECUTE=0 uvicorn thesis.web.app:app \
+THESIS_ACCOUNT_PROFILE=judge \
+THESIS_DB=data/judge-thesis.sqlite \
+THESIS_ALLOW_EXECUTE=0 \
+uvicorn thesis.web.app:app \
     --host 0.0.0.0 \
     --port "${PORT:-5000}" &
 web_pid=$!
 
-wait "$web_pid"
+while kill -0 "$worker_pid" 2>/dev/null && kill -0 "$web_pid" 2>/dev/null; do
+    sleep 1
+done
+
+status=0
+if ! kill -0 "$worker_pid" 2>/dev/null; then
+    wait "$worker_pid" || status=$?
+else
+    wait "$web_pid" || status=$?
+fi
+exit "$status"

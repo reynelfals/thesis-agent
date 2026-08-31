@@ -28,11 +28,11 @@
   <section class="brief-section">
     <div><p class="section-kicker">01 / THE AGENT PATH</p><h2>One funnel. Six accountable steps.</h2></div>
     <ol class="path">
-      <li><b>Observe</b><span>All ten approved names are observed from live market data alongside paper-account state, positions, and fills.</span></li>
-      <li><b>Scout</b><span>Deterministic ranking scores stock factors and selects the top five for options feasibility checks: available contracts, feasible directions, and option fit.</span></li>
-      <li><b>Propose</b><span>Up to three feasible candidates reach Grok-4.6. It must research them through filtered Alpaca MCP snapshot and option-chain tools, then request a structured, defined-risk spread.</span></li>
-      <li><b>Structure</b><span>Deterministic code builds a call or put debit vertical: 14–45 DTE near 25 DTE, approximately at-the-money long leg, defined-width short leg, and 1:1 day-limit MLEG.</span></li>
-      <li><b>Gate</b><span>Maximum loss is known before submission: net debit × 100 × quantity. A final hard control stack determines whether the proposal may proceed.</span></li>
+      <li><b>Observe</b><span>The 29-name expanded universe is observed from live market data alongside paper-account state, positions, and fills.</span></li>
+      <li><b>Scout</b><span>Deterministic stock factors rank the universe. Up to three stock-ranked candidates proceed even when the retained legacy vertical probe finds no feasible spread.</span></li>
+      <li><b>Propose</b><span>Grok-4.6 must research the candidates through filtered Alpaca MCP snapshot and option-chain tools, then select one underlying and a bullish or bearish direction.</span></li>
+      <li><b>Structure</b><span>Deterministic code selects one long call (bullish) or long put (bearish): 14–45 DTE near 25 DTE, near the money but farther OTM when needed for the premium cap.</span></li>
+      <li><b>Gate</b><span>Maximum loss is premium paid. A final hard control stack determines whether a simple single-leg limit/day buy-to-open order may proceed.</span></li>
       <li><b>Record</b><span>Every decision, including unavailable data and abstention, retains its proposal, controls, tool trace, order state, fills, monitoring, and reconciliation context.</span></li>
     </ol>
   </section>
@@ -40,8 +40,8 @@
     <div><p class="section-kicker">02 / DETERMINISTIC CONTROL PLANE</p><h2>Language can suggest. It cannot authorize.</h2></div>
     <div class="control-list">
       <p>Paper endpoint only · active, unblocked account · options level 3 · valid MCP clock in agreement with SDK</p>
-      <p>Allowlisted underlying · conviction ≥ 0.35 · valid quotes and debit · 14–45 DTE · market open</p>
-      <p>No more than three open theses · ≤2% equity at risk per thesis · ≤6% aggregate risk · explicit execution enablement</p>
+      <p>Allowlisted underlying · valid conviction ≥ 0.35 · fresh two-sided quote · 14–45 DTE · market open</p>
+      <p>Premium ≤1% of equity · fewer than three broker positions before entry · ≤6% aggregate risk · one opening order per New York day · explicit execution enablement</p>
     </div>
     <p class="control-note">Any failed gate produces a recorded no-trade or blocked decision. Grok never chooses contracts, sizes risk, or submits orders.</p>
   </section>
@@ -56,7 +56,8 @@
   <section class="brief-section evidence">
     <div><p class="section-kicker">04 / THE AUDIT CONSOLE</p><h2>Every claim links to evidence.</h2></div>
     <p>The live dashboard is read-only. It renders before broker data arrives, then reconciles an append-only SQLite decision ledger with Alpaca paper data in the background.</p>
-    <ul><li>Grok thesis and deterministic gates</li><li>Sanitized CLI/API trace and exact blocked MLEG intent</li><li>Broker order state, fills, and position attribution</li><li>Exit state, realized and unrealized P&amp;L, reconciliation delta, and equity curve</li></ul>
+    <ul><li>Grok thesis and deterministic gates</li><li>Sanitized API trace and exact blocked single-leg intent</li><li>Broker order state, fills, and position attribution</li><li>Exit state, realized and unrealized P&amp;L, reconciliation delta, and equity curve</li></ul>
+    <p>The current demo also supports a durable 30-minute weekday analysis-only cadence. Those cycles force execution off and cannot submit orders.</p>
     <a class="console-link" href="/">Open the live audit console <span aria-hidden="true">→</span></a>
   </section>
   <section class="closing"><p class="section-kicker">WHY THESIS</p><h2>Evidence over assertion.</h2><p>The model is creative where language is useful and powerless where deterministic controls are safer. Its reasoning, abstention, risk, tool use, and broker outcome can be judged from one screen.</p><small>Paper trading only. This project is a hackathon demonstration, not investment advice.</small></section>
@@ -76,26 +77,27 @@
       <section>
         <p class="print-kicker">AI LOGIC</p>
         <h3>Creative thesis. Bounded authority.</h3>
-        <p>Each cycle reads live Alpaca paper-account state, positions, fills, and market data. Grok-4.6 can research only the deterministic shortlist through two filtered Alpaca MCP tools, then requests a structured spread thesis. It never chooses final contracts, sizes risk, or submits orders.</p>
-        <p>At qualifying conviction, code constructs a call or put debit vertical: 14–45 DTE near 25 DTE, approximately at-the-money long leg, defined-width short leg, and 1:1 day-limit MLEG. Maximum loss is known before submission: net debit × 100 × quantity.</p>
+        <p>Each cycle reads Alpaca paper-account state, positions, fills, and market data. Grok-4.6 can research only the deterministic stock-ranked shortlist through two filtered Alpaca MCP tools, then selects one underlying and a bullish or bearish direction. It never chooses the final contract, sizes risk, or submits orders.</p>
+        <p>At qualifying conviction, code selects one long call or put: 14–45 DTE near 25 DTE, near ATM but farther OTM when needed to fit the 1% equity premium cap. Maximum loss is premium paid.</p>
       </section>
       <section>
         <p class="print-kicker">RISK GATES</p>
         <h3>Language cannot authorize.</h3>
-        <p>Hard controls require a paper endpoint; active, unblocked account; options level 3; valid MCP clock agreeing with the SDK; allowlisted underlying; conviction ≥0.35; valid quotes and debit; 14–45 DTE; market open; no more than three open theses; ≤2% equity risk per thesis; ≤6% aggregate risk; and explicit execution enablement.</p>
+        <p>Hard controls require a paper endpoint; active, unblocked account; options level 3; valid MCP clock agreeing with the SDK; allowlisted underlying; valid conviction ≥0.35; fresh two-sided quote; 14–45 DTE; market open; premium ≤1% of equity; fewer than three broker positions before entry; ≤6% aggregate risk; one opening order per New York day; and explicit execution enablement.</p>
         <p>Any failure records a no-trade or blocked decision. Abstention is evidence, not an error.</p>
       </section>
       <section>
         <p class="print-kicker">ALPACA INFRASTRUCTURE</p>
         <h3>Tool evidence, not a screenshot.</h3>
         <p>Alpaca APIs supply deterministic scouting, monitoring, fills, positions, and portfolio history. The official Alpaca MCP server supplies constrained Grok research plus harness-owned account, clock, order-status, and guarded <code>place_option_order</code> calls.</p>
-        <p>Only a canonical two-leg debit MLEG can cross the write boundary. Malformed data, account restrictions, clock disagreement, timeout, rejection, or a missing order ID stops the cycle. There is no retry or alternate write path after an ambiguous result.</p>
+        <p>Only a canonical single-leg limit/day buy-to-open option order can cross the write boundary. Malformed data, account restrictions, clock disagreement, timeout, rejection, or a missing order ID stops the cycle. There is no retry or alternate write path after an ambiguous result.</p>
+        <p>A durable 30-minute weekday analysis-only capability always forces execution off.</p>
       </section>
     </div>
     <section class="print-evidence">
       <div>
         <p class="print-kicker">EVIDENCE &amp; PERFORMANCE</p>
-        <p>The read-only FastAPI console reconciles an append-only SQLite decision ledger with Alpaca orders, fills, positions, and portfolio history. Judges can inspect the thesis, gates, sanitized MCP/API trace, MLEG intent, broker state, realized and unrealized P&amp;L, reconciliation delta, and equity curve. Values come directly from the submitted paper account; none are hardcoded.</p>
+        <p>The read-only FastAPI console reconciles an append-only SQLite decision ledger with Alpaca orders, fills, positions, and portfolio history. Judges can inspect the thesis, gates, sanitized MCP/API trace, single-leg intent, broker state, realized and unrealized P&amp;L, reconciliation delta, and equity curve. Values come directly from the submitted paper account; none are hardcoded.</p>
       </div>
       <div>
         <p class="print-kicker">WHY THESIS</p>

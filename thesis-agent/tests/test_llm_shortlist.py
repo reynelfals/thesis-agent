@@ -161,6 +161,41 @@ def test_agent_underlying_and_side_remain_deterministically_constrained(
     assert "shortlist" in draft.thesis.setup
 
 
+def test_agent_low_conviction_is_rejected_not_clamped(monkeypatch) -> None:
+    research = _call("get_stock_snapshot", {"symbols": "SPY"}, "research")
+    request = _call(
+        llm_module.REQUEST_TRADE_TOOL,
+        _trade_request(conviction=0.1),
+        "request",
+    )
+
+    draft, _, _ = _run_agent(
+        monkeypatch,
+        [_response(research), _response(request)],
+    )
+
+    assert draft.thesis.conviction == 0
+    assert draft.thesis.decision == "no_trade"
+    assert "low conviction" in draft.thesis.notes
+
+
+def test_agent_nonfinite_numeric_response_is_rejected(monkeypatch) -> None:
+    research = _call("get_stock_snapshot", {"symbols": "SPY"}, "research")
+    request = _call(
+        llm_module.REQUEST_TRADE_TOOL,
+        _trade_request(conviction=float("nan")),
+        "request",
+    )
+
+    draft, _, _ = _run_agent(
+        monkeypatch,
+        [_response(research), _response(request)],
+    )
+
+    assert draft.thesis.conviction == 0
+    assert draft.thesis.decision == "no_trade"
+
+
 def test_agent_cannot_request_trade_before_mcp_research(monkeypatch) -> None:
     premature = _call(
         llm_module.REQUEST_TRADE_TOOL,

@@ -1,0 +1,105 @@
+{
+  "benchmarks": {
+    "ATM_25D_DEFINED_RISK_VERTICAL": null,
+    "SPY_BUY_HOLD": null
+  },
+  "blocking_reasons": [
+    "Alpaca exposes historical option bars and trades but the historical option quotes endpoint is unavailable; neither bars nor last trades are acceptable substitutes for contemporaneous NBBO fills.",
+    "The deployed Grok strategy has no historical archive of contemporaneously recorded decisions and therefore cannot be reconstructed without hindsight.",
+    "The deployed strategy has no executable exit policy; the frozen study exit rules are prospective and cannot be represented as historical production behavior."
+  ],
+  "claim": "No scientifically validated positive trading edge is established.",
+  "data_probe": {
+    "blocking_reasons": [
+      "Alpaca exposes historical option bars and trades but the historical option quotes endpoint is unavailable; neither bars nor last trades are acceptable substitutes for contemporaneous NBBO fills.",
+      "The deployed Grok strategy has no historical archive of contemporaneously recorded decisions and therefore cannot be reconstructed without hindsight.",
+      "The deployed strategy has no executable exit policy; the frozen study exit rules are prospective and cannot be represented as historical production behavior."
+    ],
+    "capabilities": {
+      "expired_option_contracts": true,
+      "historical_option_bars": true,
+      "historical_option_nbbo_quotes": false,
+      "historical_option_trades": true,
+      "stock_bars": true
+    },
+    "data_availability_start": "2024-02",
+    "evidence": {
+      "expired_option_contracts": {
+        "available": true,
+        "http_status": 200,
+        "message": "",
+        "paginated": false,
+        "rows": 112
+      },
+      "historical_option_bars": {
+        "available": true,
+        "http_status": 200,
+        "message": "",
+        "paginated": true,
+        "rows": 100
+      },
+      "historical_option_nbbo_quotes": {
+        "available": false,
+        "http_status": 404,
+        "message": "Not Found",
+        "paginated": false,
+        "rows": 0
+      },
+      "historical_option_trades": {
+        "available": true,
+        "http_status": 200,
+        "message": "",
+        "paginated": true,
+        "rows": 100
+      },
+      "stock_bars": {
+        "available": true,
+        "http_status": 200,
+        "message": "",
+        "paginated": false,
+        "rows": 5
+      }
+    },
+    "official_sources": [
+      "https://docs.alpaca.markets/us/docs/historical-option-data",
+      "https://docs.alpaca.markets/us/reference/optionbars",
+      "https://docs.alpaca.markets/us/reference/optiontrades",
+      "https://docs.alpaca.markets/us/reference/get-options-contracts"
+    ],
+    "order_endpoints_called": 0,
+    "probe_version": "alpaca-historical-capability-v1",
+    "read_only": true,
+    "scientific_dataset_ready": false
+  },
+  "decision": "Reject the positive-edge claim. Required point-in-time evidence is unavailable and no return estimate was manufactured.",
+  "generated_at": "2026-08-31T03:26:13.971772+00:00",
+  "performance": {
+    "adjusted_p_value": null,
+    "annualized_volatility": null,
+    "by_regime": {},
+    "cagr": null,
+    "confidence_interval": null,
+    "expectancy_dollars": null,
+    "exposure": null,
+    "hit_rate": null,
+    "maximum_drawdown": null,
+    "sharpe": null,
+    "sortino": null,
+    "trade_count": 0,
+    "turnover": null
+  },
+  "required_next_evidence": [
+    "A licensed point-in-time OPRA NBBO dataset for both spread legs",
+    "A prospective archive of every candidate and contemporaneous Grok decision",
+    "At least 100 completed trades over at least 365 calendar days",
+    "At least 15 completed trades in each pre-registered regime",
+    "Daily mark-to-market strategy and benchmark equity curves",
+    "Walk-forward and untouched out-of-sample results net of modeled costs"
+  ],
+  "runtime_drift": [],
+  "schema_version": "thesis-edge-study-report-v1",
+  "status": "not_validated",
+  "strategy_id": "thesis-recorded-grok-defined-risk-v1",
+  "strategy_spec_sha256": "c98233c83d1b5fc3da3683a9c0c363d82464cc31d92044b963f8f8113d94575a",
+  "study_kind": "historical_data_capability_audit"
+}

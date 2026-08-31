@@ -81,6 +81,18 @@ class ThesisStore:
                 """
             )
             conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS opening_order_reservations (
+                    ny_date TEXT PRIMARY KEY,
+                    slot TEXT NOT NULL,
+                    thesis_id TEXT NOT NULL,
+                    client_order_id TEXT NOT NULL UNIQUE,
+                    state TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_cycles_created_at ON cycles(created_at DESC)"
             )
             conn.execute(
@@ -135,14 +147,40 @@ class ThesisStore:
         return total
 
     def save_cycle(self, payload: dict[str, Any]) -> None:
+        material = json.dumps(payload, indent=2, default=str)
+        self._archive_cycle(payload, material.encode("utf-8"))
         self._insert_cycle(payload)
         path = self.path.parent / "last_cycle.json"
-        path.write_text(json.dumps(payload, indent=2))
+        path.write_text(material)
+
+    def _cycle_id(self, payload: dict[str, Any]) -> str:
+        canonical = json.dumps(payload, sort_keys=True, default=str)
+        return str(
+            payload.get("id")
+            or sha256(canonical.encode("utf-8")).hexdigest()[:24]
+        )
+
+    def _archive_cycle(self, payload: dict[str, Any], content: bytes) -> None:
+        cycle_id = self._cycle_id(payload)
+        archive = self.path.parent / "cycles"
+        archive.mkdir(parents=True, exist_ok=True)
+        immutable_path = archive / f"{cycle_id}.json"
+        try:
+            with immutable_path.open("xb") as handle:
+                handle.write(content)
+        except FileExistsError:
+            try:
+                existing_payload = json.loads(immutable_path.read_bytes())
+            except (OSError, json.JSONDecodeError) as exc:
+                raise ValueError(
+                    f"immutable cycle archive is unreadable: {cycle_id}"
+                ) from exc
+            if existing_payload != payload:
+                raise ValueError(f"immutable cycle id collision: {cycle_id}")
 
     def _insert_cycle(self, payload: dict[str, Any]) -> None:
         thesis = payload.get("thesis") or {}
-        material = json.dumps(payload, sort_keys=True, default=str)
-        cycle_id = str(payload.get("id") or sha256(material.encode()).hexdigest()[:24])
+        cycle_id = self._cycle_id(payload)
         with self._connect() as conn:
             conn.execute(
                 """
@@ -162,9 +200,11 @@ class ThesisStore:
         if not path.exists():
             return
         try:
-            payload = json.loads(path.read_text())
+            raw = path.read_bytes()
+            payload = json.loads(raw)
         except (json.JSONDecodeError, OSError):
             return
+        self._archive_cycle(payload, raw)
         self._insert_cycle(payload)
 
     def last_cycle(self) -> dict[str, Any] | None:
@@ -256,6 +296,57 @@ class ThesisStore:
         return [
             PerformanceSnapshot.model_validate_json(row["json"]) for row in rows
         ]
+
+    def reserve_opening_order(
+        self,
+        *,
+        ny_date: str,
+        slot: str,
+        thesis_id: str,
+        client_order_id: str,
+        created_at: str,
+    ) -> bool:
+        """Atomically claim the only opening-order slot for a New York date."""
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT OR IGNORE INTO opening_order_reservations
+                    (ny_date, slot, thesis_id, client_order_id, state, created_at)
+                VALUES (?, ?, ?, ?, 'reserved', ?)
+                """,
+                (ny_date, slot, thesis_id, client_order_id, created_at),
+            )
+        return cursor.rowcount == 1
+
+    def mark_opening_order_reservation(
+        self,
+        *,
+        client_order_id: str,
+        state: str,
+    ) -> None:
+        if state not in {"reserved", "dispatch_ambiguous", "submitted"}:
+            raise ValueError("invalid opening-order reservation state")
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE opening_order_reservations
+                SET state = ?
+                WHERE client_order_id = ?
+                """,
+                (state, client_order_id),
+            )
+
+    def opening_order_reservation(self, ny_date: str) -> dict[str, str] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT ny_date, slot, thesis_id, client_order_id, state, created_at
+                FROM opening_order_reservations
+                WHERE ny_date = ?
+                """,
+                (ny_date,),
+            ).fetchone()
+        return dict(row) if row else None
 
     def claim_scheduled_run(
         self,

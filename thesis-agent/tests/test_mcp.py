@@ -287,6 +287,51 @@ def order():
     }
 
 
+def single_order(**updates):
+    payload = {
+        "symbol": "AAPL260117C00150000",
+        "qty": "1",
+        "side": "buy",
+        "type": "limit",
+        "time_in_force": "day",
+        "limit_price": "1.25",
+        "position_intent": "buy_to_open",
+        "client_order_id": "thesis-20260901-open-abc123",
+    }
+    payload.update(updates)
+    return payload
+
+
+@pytest.mark.anyio
+async def test_single_option_order_accepts_canonical_payload(mcp):
+    async with AlpacaMcpSession(Settings()) as session:
+        await session.place_option_order(single_order())
+
+    assert FakeSession.calls[-1] == ("place_option_order", single_order())
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "updates",
+    [
+        {"qty": "1.5"},
+        {"qty": "0"},
+        {"qty": True},
+        {"limit_price": "nan"},
+        {"limit_price": "inf"},
+        {"limit_price": "0"},
+        {"side": "sell"},
+        {"position_intent": "sell_to_open"},
+    ],
+)
+async def test_single_option_order_rejects_malformed_payload(mcp, updates):
+    async with AlpacaMcpSession(Settings()) as session:
+        with pytest.raises(McpError):
+            await session.place_option_order(single_order(**updates))
+
+    assert not any(name == "place_option_order" for name, _ in FakeSession.calls)
+
+
 @pytest.mark.anyio
 async def test_order_is_canonical_and_dispatched_only_once(mcp):
     async with AlpacaMcpSession(Settings()) as session:

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+
+import pytest
 
 from thesis.models import (
     OrderSnapshot,
@@ -54,6 +57,89 @@ def test_store_keeps_append_only_cycles_and_deduplicates_same_record(tmp_path) -
     cycles = store.list_cycles()
     assert [cycle["id"] for cycle in cycles] == ["cycle-2", "cycle-1"]
     assert store.last_cycle()["id"] == "cycle-2"
+    assert json.loads(
+        (tmp_path / "cycles" / "cycle-1.json").read_text()
+    ) == first
+    assert json.loads(
+        (tmp_path / "cycles" / "cycle-2.json").read_text()
+    ) == second
+
+
+def test_cycle_archive_rejects_id_collision_without_mutating_original(
+    tmp_path,
+) -> None:
+    store = ThesisStore(tmp_path / "audit.sqlite")
+    original = {"id": "fixed", "at": "2026-01-01T00:00:00Z", "thesis": {}}
+    store.save_cycle(original)
+    path = tmp_path / "cycles" / "fixed.json"
+    before = path.read_bytes()
+
+    with pytest.raises(ValueError, match="immutable cycle id collision"):
+        store.save_cycle({**original, "decision": "different"})
+
+    assert path.read_bytes() == before
+    assert store.last_cycle() == original
+
+
+def test_legacy_last_cycle_is_archived_before_later_cycle_overwrites_pointer(
+    tmp_path,
+) -> None:
+    legacy = {
+        "id": "aug-31-completed",
+        "at": "2026-08-31T14:35:00-04:00",
+        "decision": "submitted",
+        "thesis": {"id": "aug-31-thesis", "structure": {"kind": "debit_vertical"}},
+    }
+    legacy_bytes = (
+        b'{\n  "id": "aug-31-completed",\n'
+        b'  "at": "2026-08-31T14:35:00-04:00",\n'
+        b'  "decision": "submitted",\n'
+        b'  "thesis": {"id": "aug-31-thesis", "structure": {"kind": "debit_vertical"}}\n'
+        b"}"
+    )
+    assert json.loads(legacy_bytes) == legacy
+    (tmp_path / "last_cycle.json").write_bytes(legacy_bytes)
+
+    store = ThesisStore(tmp_path / "audit.sqlite")
+    archived = tmp_path / "cycles" / "aug-31-completed.json"
+    assert archived.read_bytes() == legacy_bytes
+
+    later = {
+        "id": "sep-01-analysis",
+        "at": "2026-09-01T14:35:00-04:00",
+        "decision": "blocked",
+        "thesis": {"id": "sep-01-thesis"},
+    }
+    store.save_cycle(later)
+
+    assert store.last_cycle() == later
+    assert archived.read_bytes() == legacy_bytes
+    assert [cycle["id"] for cycle in store.list_cycles()] == [
+        "sep-01-analysis",
+        "aug-31-completed",
+    ]
+
+
+def test_opening_order_reservation_is_atomic_and_persistent(tmp_path) -> None:
+    path = tmp_path / "audit.sqlite"
+    ThesisStore(path)
+
+    def reserve(index: int) -> bool:
+        return ThesisStore(path).reserve_opening_order(
+            ny_date="2026-09-01",
+            slot="opening-1",
+            thesis_id=f"thesis-{index}",
+            client_order_id=f"thesis-20260901-open-{index}",
+            created_at="2026-09-01T13:30:00Z",
+        )
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(reserve, range(16)))
+
+    assert sum(results) == 1
+    persisted = ThesisStore(path).opening_order_reservation("2026-09-01")
+    assert persisted is not None
+    assert persisted["state"] == "reserved"
 
 
 def test_store_keeps_order_status_and_performance_snapshots(tmp_path) -> None:

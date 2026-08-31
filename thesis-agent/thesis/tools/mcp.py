@@ -452,6 +452,48 @@ class AlpacaMcpSession:
         if self._order_dispatched:
             raise McpError("an option order was already dispatched in this MCP session")
         body = dict(payload)
+        single_required = {
+            "symbol",
+            "qty",
+            "side",
+            "type",
+            "time_in_force",
+            "limit_price",
+            "position_intent",
+            "client_order_id",
+        }
+        if set(body) == single_required:
+            if (
+                body["type"] != "limit"
+                or body["time_in_force"] != "day"
+                or body["side"] != "buy"
+                or body["position_intent"] != "buy_to_open"
+            ):
+                raise McpError("single option order must be limit/day/buy_to_open")
+            try:
+                qty = float(body["qty"])
+                limit_price = float(body["limit_price"])
+                if (
+                    isinstance(body["qty"], bool)
+                    or not math.isfinite(qty)
+                    or qty <= 0
+                    or not qty.is_integer()
+                    or not math.isfinite(limit_price)
+                    or limit_price <= 0
+                ):
+                    raise ValueError
+            except (TypeError, ValueError) as exc:
+                raise McpError(
+                    "single option qty must be a positive integer and limit must be finite positive"
+                ) from exc
+            if not str(body["symbol"]).strip():
+                raise McpError("option order symbol is required")
+            client_id = str(body["client_order_id"])
+            if not client_id.startswith("thesis-") or len(client_id) > 48:
+                raise McpError("client_order_id must use the thesis- prefix")
+            self._order_dispatched = True
+            return await self._call("place_option_order", body, trace_arguments=False)
+
         required = {
             "qty",
             "type",

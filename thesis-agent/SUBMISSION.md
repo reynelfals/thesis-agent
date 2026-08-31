@@ -10,6 +10,22 @@
 
 **Printable version:** [`submission_assets/thesis-one-page.pdf`](submission_assets/thesis-one-page.pdf)
 
+## Form-ready metadata
+
+**Cover image:** [`submission_assets/submission-brief.jpg`](submission_assets/submission-brief.jpg)
+(1280×720, 16:9)
+**Project title:** Thesis
+**Tagline:** Propose. Prove. Execute.
+**Short description:** Thesis is an autonomous options agent where Grok proposes a
+falsifiable thesis, deterministic code proves bounded risk, and Alpaca paper
+infrastructure executes—or safely refuses.
+**Long description:** Paste this document from “The problem” through “Why it is
+different,” including the paper-trading disclaimer.
+**Technology tags:** Grok 4.6, xAI API, official Alpaca MCP server, Alpaca Trading
+API, Alpaca Market Data API, Python, FastAPI, SQLite, Replit
+**Direct slide PDF:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-slides.pdf>
+**Direct MP4:** <https://raw.githubusercontent.com/reynelfals/thesis-agent/main/thesis-agent/submission_assets/thesis-demo.mp4>
+
 ## One-line pitch
 
 Thesis is an autonomous options agent that cannot risk a dollar until it writes
@@ -81,6 +97,13 @@ reconciled from the submitted paper account.
 Performance values come from the submitted paper account and are displayed directly
 from Alpaca; they are not hardcoded or backfilled. A no-trade is treated as a valid,
 auditable outcome rather than forcing activity for a demo.
+
+This operational evidence is not a claim of alpha. The
+[pre-registered scientific study](research/edge-study-report.md) currently rejects
+a positive-edge claim: historical option bars and trades are available, but the
+required contemporaneous OPRA NBBO pairs and historical recorded Grok decisions are
+not. No synthetic fill series is substituted, and one paper result cannot establish
+repeatability.
 
 ## Why it is different
 

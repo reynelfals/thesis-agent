@@ -106,10 +106,8 @@ def _safe_structure(value: Any) -> dict[str, Any] | None:
         "kind",
         "underlying",
         "long_symbol",
-        "short_symbol",
         "expiration",
         "long_strike",
-        "short_strike",
         "dte",
         "debit_limit",
         "qty",
@@ -123,6 +121,8 @@ def _safe_structure(value: Any) -> dict[str, Any] | None:
         "short_bid_ask_pct",
     )
     result = {key: value.get(key) for key in required_keys}
+    result["short_symbol"] = value.get("short_symbol")
+    result["short_strike"] = value.get("short_strike")
     result.update(
         {
             key: value[key]
@@ -535,6 +535,15 @@ class Dashboard:
         options_level = int(_number(_value(account, "options_trading_level")))
         checks = [
             {
+                "label": "Account profile",
+                "status": "pass",
+                "evidence": getattr(
+                    self.settings,
+                    "account_profile_label",
+                    "Paper account",
+                ),
+            },
+            {
                 "label": "Paper-only endpoint",
                 "status": "pass",
                 "evidence": "Alpaca paper trading",
@@ -573,6 +582,11 @@ class Dashboard:
         ]
         readiness = {
             "ready": all(check["status"] == "pass" for check in checks),
+            "account_profile": getattr(
+                self.settings,
+                "account_profile_label",
+                "Paper account",
+            ),
             "account_suffix": _text(_value(account, "account_number"))[-4:],
             "account_phase": (
                 "Fresh — no fills recorded"
@@ -594,6 +608,7 @@ class Dashboard:
                 thesis.structure.long_symbol,
                 thesis.structure.short_symbol,
             )
+            if symbol
         }
         tracked = []
         for thesis in theses:
@@ -605,7 +620,11 @@ class Dashboard:
                 {
                     "thesis_id": thesis.id,
                     "spread": (
-                        f"{thesis.structure.long_symbol} / {thesis.structure.short_symbol}"
+                        (
+                            f"{thesis.structure.long_symbol} / {thesis.structure.short_symbol}"
+                            if thesis.structure.short_symbol
+                            else thesis.structure.long_symbol
+                        )
                         if thesis.structure
                         else ""
                     ),

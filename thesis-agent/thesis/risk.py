@@ -44,7 +44,7 @@ ALLOWLIST = EXPANDED_UNIVERSE
 MIN_DTE = 14
 MAX_DTE = 45
 MAX_OPEN_THESES = 3
-PER_THESIS_EQUITY_PCT = 0.02
+PER_THESIS_EQUITY_PCT = 0.01
 AGGREGATE_EQUITY_PCT = 0.06
 MIN_CONVICTION = 0.35
 
@@ -69,7 +69,7 @@ class RiskSnapshot:
 
 
 def size_qty(equity: float, debit_per_spread: float, conviction: float) -> int:
-    """Contracts such that debit paid <= 2% equity, scaled by conviction. Min 1 if affordable."""
+    """Contracts such that premium paid stays within the conservative 1% cap."""
     if debit_per_spread <= 0:
         raise RiskError("debit must be positive")
     budget = equity * PER_THESIS_EQUITY_PCT * max(conviction, MIN_CONVICTION)
@@ -95,6 +95,6 @@ def check_open(
         raise RiskError("max open theses")
     cap = snap.equity * PER_THESIS_EQUITY_PCT
     if debit_usd > cap + 1e-6:
-        raise RiskError(f"debit ${debit_usd:.0f} exceeds 2% cap ${cap:.0f}")
+        raise RiskError(f"debit ${debit_usd:.0f} exceeds 1% cap ${cap:.0f}")
     if snap.debit_at_risk + debit_usd > snap.equity * AGGREGATE_EQUITY_PCT + 1e-6:
         raise RiskError("aggregate debit cap")

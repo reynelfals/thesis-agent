@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -25,13 +26,18 @@ class Settings:
 
 
 class FakeClient:
+    equity = "100000"
+    last_equity = "100000"
+    positions_data = []
+    thesis_orders = []
+
     def __init__(self, settings) -> None:
         self.settings = settings
 
     def account(self):
         return SimpleNamespace(
-            equity="100000",
-            last_equity="100000",
+            equity=self.equity,
+            last_equity=self.last_equity,
             cash="100000",
             buying_power="200000",
             options_buying_power="100000",
@@ -42,7 +48,9 @@ class FakeClient:
         return SimpleNamespace(is_open=True)
 
     def positions(self):
-        return []
+        if isinstance(self.positions_data, Exception):
+            raise self.positions_data
+        return list(self.positions_data)
 
     def portfolio_history(self):
         return SimpleNamespace(
@@ -55,6 +63,11 @@ class FakeClient:
 
     def fill_activities(self):
         return []
+
+    def thesis_orders_for_ny_date(self, start, end):
+        if isinstance(self.thesis_orders, Exception):
+            raise self.thesis_orders
+        return list(self.thesis_orders)
 
 
 class FakeMcp:
@@ -168,12 +181,11 @@ def _thesis() -> Thesis:
 
 def _structure() -> Structure:
     return Structure(
+        kind="single_long_option",
         underlying="SPY",
         long_symbol="SPY260918C00600000",
-        short_symbol="SPY260918C00605000",
         expiration="2026-09-18",
         long_strike=600,
-        short_strike=605,
         dte=21,
         debit_limit=2,
         qty=1,
@@ -183,11 +195,6 @@ def _structure() -> Structure:
                 symbol="SPY260918C00600000",
                 side="buy",
                 position_intent="buy_to_open",
-            ),
-            SpreadLeg(
-                symbol="SPY260918C00605000",
-                side="sell",
-                position_intent="sell_to_open",
             ),
         ],
     )
@@ -205,6 +212,10 @@ def cycle_fakes(monkeypatch):
     FakeMcp.clock_data = {"is_open": True}
     FakeMcp.fail_submit = False
     FakeMcp.fail_refresh = False
+    FakeClient.equity = "100000"
+    FakeClient.last_equity = "100000"
+    FakeClient.positions_data = []
+    FakeClient.thesis_orders = []
     monkeypatch.setattr(cycle_module, "PaperClient", FakeClient)
     monkeypatch.setattr(cycle_module, "AlpacaMcpSession", FakeMcp)
     monkeypatch.setattr(
@@ -269,7 +280,7 @@ def cycle_fakes(monkeypatch):
     )
     monkeypatch.setattr(
         cycle_module,
-        "build_debit_vertical",
+        "build_single_option",
         lambda *args, **kwargs: _structure(),
     )
     monkeypatch.setattr(cycle_module, "check_open", lambda *args, **kwargs: None)
@@ -328,12 +339,13 @@ def test_successful_order_is_attributed_to_exactly_one_mcp_dispatch(
     assert result.tool_path == "mcp"
     assert len(mcp.submissions) == 1
     payload = mcp.submissions[0]
-    assert payload["order_class"] == "mleg"
+    assert payload["symbol"] == "SPY260918C00600000"
+    assert payload["side"] == "buy"
+    assert payload["position_intent"] == "buy_to_open"
     assert payload["type"] == "limit"
     assert payload["time_in_force"] == "day"
-    assert payload["client_order_id"].startswith(
-        f"thesis-{result.thesis.id}-"
-    )
+    assert payload["client_order_id"].startswith("thesis-")
+    assert payload["client_order_id"].endswith(f"-open-{result.thesis.id}")
     assert any(
         gate["name"] == "mcp_order_submission" and gate["ok"]
         for gate in result.gates
@@ -359,6 +371,163 @@ def test_ambiguous_mcp_submission_is_terminal_and_not_retried(
         for gate in result.gates
     )
     assert "retry" in result.thesis.notes
+    ny_date, _, _ = cycle_module._ny_day()
+    reservation = ThesisStore(tmp_path / "audit.sqlite").opening_order_reservation(
+        ny_date
+    )
+    assert reservation["state"] == "dispatch_ambiguous"
+
+
+def test_same_day_loss_limit_blocks_submission(tmp_path, cycle_fakes) -> None:
+    FakeClient.equity = "98000"
+    FakeClient.last_equity = "100000"
+
+    result = cycle_module.run_cycle(Settings(tmp_path / "audit.sqlite"), execute=True)
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    assert any(
+        gate["name"] == "daily_loss_limit" and not gate["ok"]
+        for gate in result.gates
+    )
+
+
+def test_missing_daily_equity_evidence_fails_closed(tmp_path, cycle_fakes) -> None:
+    FakeClient.last_equity = None
+
+    result = cycle_module.run_cycle(Settings(tmp_path / "audit.sqlite"), execute=True)
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    assert any(
+        gate["name"] == "daily_loss_limit" and not gate["ok"]
+        for gate in result.gates
+    )
+
+
+def test_three_broker_positions_block_submission(tmp_path, cycle_fakes) -> None:
+    FakeClient.positions_data = [
+        SimpleNamespace(symbol=f"OPT{index}", side="long", qty="1")
+        for index in range(3)
+    ]
+
+    result = cycle_module.run_cycle(Settings(tmp_path / "audit.sqlite"), execute=True)
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    assert any(
+        gate["name"] == "broker_position_limit" and not gate["ok"]
+        for gate in result.gates
+    )
+
+
+def test_missing_positions_fail_closed_only_for_enabled_submission(
+    tmp_path, cycle_fakes
+) -> None:
+    FakeClient.positions_data = RuntimeError("unavailable")
+
+    disabled = cycle_module.run_cycle(
+        Settings(tmp_path / "disabled.sqlite"),
+        execute=False,
+    )
+    enabled = cycle_module.run_cycle(
+        Settings(tmp_path / "enabled.sqlite"),
+        execute=True,
+    )
+
+    assert disabled.thesis.structure is not None
+    assert enabled.decision == "blocked"
+    assert all(mcp.submissions == [] for mcp in FakeMcp.instances)
+    assert any(
+        gate["name"] == "broker_position_limit" and not gate["ok"]
+        for gate in enabled.gates
+    )
+
+
+def test_second_opening_order_same_ny_day_is_blocked(
+    tmp_path, cycle_fakes
+) -> None:
+    db_path = tmp_path / "audit.sqlite"
+    ThesisStore(db_path).save_cycle(
+        {
+            "id": "already-submitted",
+            "at": datetime.now(timezone.utc).isoformat(),
+            "decision": "submitted",
+            "thesis": {"id": "prior", "decision": "submitted"},
+        }
+    )
+    ny_date, _, _ = cycle_module._ny_day()
+    assert ThesisStore(db_path).reserve_opening_order(
+        ny_date=ny_date,
+        slot="opening-1",
+        thesis_id="prior",
+        client_order_id=f"thesis-{ny_date.replace('-', '')}-open-prior",
+        created_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    result = cycle_module.run_cycle(Settings(db_path), execute=True)
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    assert any(
+        gate["name"] == "one_opening_order_per_ny_day" and not gate["ok"]
+        for gate in result.gates
+    )
+
+
+def test_broker_visible_same_day_thesis_order_blocks_reservation(
+    tmp_path, cycle_fakes
+) -> None:
+    FakeClient.thesis_orders = [
+        SimpleNamespace(client_order_id="thesis-20260901-open-prior")
+    ]
+
+    result = cycle_module.run_cycle(
+        Settings(tmp_path / "audit.sqlite"),
+        execute=True,
+    )
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    ny_date, _, _ = cycle_module._ny_day()
+    assert ThesisStore(tmp_path / "audit.sqlite").opening_order_reservation(
+        ny_date
+    ) is None
+
+
+def test_broker_reconciliation_is_not_required_when_execution_disabled(
+    tmp_path, cycle_fakes
+) -> None:
+    FakeClient.thesis_orders = RuntimeError("unavailable")
+
+    result = cycle_module.run_cycle(
+        Settings(tmp_path / "audit.sqlite"),
+        execute=False,
+    )
+
+    assert result.decision == "blocked"
+    assert result.thesis.structure is not None
+    assert FakeMcp.instances[0].submissions == []
+
+
+def test_missing_broker_order_reconciliation_fails_closed(
+    tmp_path, cycle_fakes
+) -> None:
+    FakeClient.thesis_orders = RuntimeError("unavailable")
+
+    result = cycle_module.run_cycle(
+        Settings(tmp_path / "audit.sqlite"),
+        execute=True,
+    )
+
+    assert result.decision == "blocked"
+    assert FakeMcp.instances[0].submissions == []
+    assert any(
+        gate["name"] == "one_opening_order_per_ny_day"
+        and not gate["ok"]
+        and "unavailable" in gate["detail"]
+        for gate in result.gates
+    )
 
 
 @pytest.mark.parametrize(
@@ -471,7 +640,7 @@ def test_order_refresh_failure_uses_submission_without_leaking_error(
     assert "status refresh unavailable" in serialized
 
 
-def test_no_feasible_scout_skips_grok_spread_and_order(
+def test_no_vertical_shortlist_still_invokes_grok_and_builds_single_option(
     monkeypatch, tmp_path, cycle_fakes
 ) -> None:
     monkeypatch.setattr(
@@ -493,23 +662,22 @@ def test_no_feasible_scout_skips_grok_spread_and_order(
         ),
     )
 
-    async def fail_draft(*args, **kwargs):
-        pytest.fail("Grok must not be called")
+    called = []
 
-    monkeypatch.setattr(cycle_module, "draft_thesis", fail_draft)
-    monkeypatch.setattr(
-        cycle_module,
-        "build_debit_vertical",
-        lambda *args, **kwargs: pytest.fail("spread must not be built"),
-    )
+    async def draft(*args, **kwargs):
+        called.append(args[1])
+        return AgentDraft(_thesis(), [], 1)
+
+    monkeypatch.setattr(cycle_module, "draft_thesis", draft)
 
     result = cycle_module.run_cycle(
         Settings(tmp_path / "audit.sqlite"),
-        execute=True,
+        execute=False,
     )
 
-    assert result.decision == "no_trade"
-    assert result.thesis.structure is None
+    assert result.decision == "blocked"
+    assert called and called[0][0].symbol == "SPY"
+    assert result.thesis.structure.kind == "single_long_option"
     assert FakeMcp.instances[0].submissions == []
 
 
@@ -524,7 +692,7 @@ def test_llm_exception_is_sanitized_and_stops_before_spread(
     monkeypatch.setattr(cycle_module, "draft_thesis", fail_draft)
     monkeypatch.setattr(
         cycle_module,
-        "build_debit_vertical",
+        "build_single_option",
         lambda *args, **kwargs: pytest.fail("spread must not be built"),
     )
     db_path = tmp_path / "audit.sqlite"
